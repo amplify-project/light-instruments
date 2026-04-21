@@ -3,7 +3,7 @@
 #include <ArduinoJson.h>
 
 uint8_t broadcastAddress[] = {0x2C, 0xF4, 0x32, 0x4E, 0xB2, 0xBE};
-String deviceName = "";
+String deviceName = "strings";
 
 const int threshold = 15; // Ignore minor voltage jitter
 

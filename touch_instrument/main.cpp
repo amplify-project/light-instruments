@@ -3,6 +3,7 @@
 #include <ArduinoJson.h>
 
 uint8_t broadcastAddress[] = {0x2C, 0xF4, 0x32, 0x4E, 0xB2, 0xBE};
+String deviceName = "touch";
 const int touchPins[] = {D1, D2, D3};
 const int numInputs = 3;
 const int sensitivityThreshold = 3; // Minimum change to trigger a send
@@ -49,6 +50,7 @@ void loop() {
 
 void sendJsonData(int id, int val) {
   StaticJsonDocument<128> doc;
+  doc["device"] = deviceName;
   doc["id"] = id;
   doc["val"] = val;
 

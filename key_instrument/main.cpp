@@ -3,6 +3,8 @@
 #include <ArduinoJson.h>
 
 uint8_t broadcastAddress[] = {0x2C, 0xF4, 0x32, 0x4E, 0xB2, 0xBE};
+String deviceName = "keys";
+
 const int buttonPins[] = {D1, D2, D3};
 const int numButtons = 3;
 
@@ -52,6 +54,7 @@ void loop() {
 
 void sendButtonEvent(int id, String action) {
   StaticJsonDocument<128> doc;
+  doc["device"] = deviceName;
   doc["id"] = id;
   doc["event"] = action;
 
