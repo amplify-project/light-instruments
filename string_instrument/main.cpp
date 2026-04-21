@@ -1,0 +1,72 @@
+#include <esp_now.h>
+#include <WiFi.h>
+#include <ArduinoJson.h>
+
+uint8_t broadcastAddress[] = {0x2C, 0xF4, 0x32, 0x4E, 0xB2, 0xBE};
+String deviceName = "";
+
+const int threshold = 15; // Ignore minor voltage jitter
+
+// State tracking
+int lastValueA1 = -1;
+int lastValueA2 = -1;
+
+void setup() {
+  Serial.begin(115200);
+
+  pinMode(A1, INPUT);
+  pinMode(A2, INPUT);
+  analogReadResolution(12);
+
+  WiFi.mode(WIFI_STA);
+  WiFi.disconnect();
+
+  if (esp_now_init() != ESP_OK) {
+    Serial.println("Error initializing ESP-NOW");
+    return;
+  }
+
+  esp_now_peer_info_t peerInfo = {};
+  memcpy(peerInfo.peer_addr, broadcastAddress, 6);
+  peerInfo.channel = 0;
+  peerInfo.encrypt = false;
+
+  if (esp_now_add_peer(&peerInfo) != ESP_OK) {
+    Serial.println("Failed to add peer");
+    return;
+  }
+
+  Serial.println("XIAO ESP32-S3 vibration detector ready");
+}
+
+void loop() {
+  int currentValueA1 = analogRead(A1);
+  int currentValueA2 = analogRead(A2);
+
+  // Only send if the value has changed significantly
+  if (abs(currentValueA1 - lastValueA1) > threshold) {
+    sendJsonData("A1", currentValueA1);
+    lastValueA1 = currentValueA1;
+  }
+
+  // Only send if the value has changed significantly
+  if (abs(currentValueA2 - lastValueA2) > threshold) {
+    sendJsonData("A2", currentValueA2);
+    lastValueA2 = currentValueA2;
+  }
+
+  delay(20);
+}
+
+void sendJsonData(String port, int val) {
+  StaticJsonDocument<128> doc;
+  doc["device"] = deviceName;
+  doc["port"] = port;
+  doc["val"] = val;
+
+  char buffer[128];
+  serializeJson(doc, buffer);
+  esp_now_send(broadcastAddress, (uint8_t *)buffer, strlen(buffer) + 1);
+
+  Serial.printf("Port: %s | Value: %d\n", port, val);
+}
