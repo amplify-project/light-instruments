@@ -14,6 +14,7 @@ int lastValue = -1;
 void setup() {
   Serial.begin(115200);
 
+  pinMode(A1, INPUT);
   analogReadResolution(12);
 
   WiFi.mode(WIFI_STA);
