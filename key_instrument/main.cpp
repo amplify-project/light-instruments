@@ -3,7 +3,7 @@
 #include <ArduinoJson.h>
 
 uint8_t broadcastAddress[] = {0x2C, 0xF4, 0x32, 0x4E, 0xB2, 0xBE};
-const int buttonPins[] = {1, 2, 3};
+const int buttonPins[] = {D1, D2, D3};
 const int numButtons = 3;
 
 // State tracking
