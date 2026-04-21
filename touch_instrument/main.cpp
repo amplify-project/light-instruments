@@ -2,7 +2,6 @@
 #include <WiFi.h>
 #include <ArduinoJson.h>
 
-// --- Configuration ---
 uint8_t broadcastAddress[] = {0x2C, 0xF4, 0x32, 0x4E, 0xB2, 0xBE};
 const int touchPins[] = {D1, D2, D3};
 const int numInputs = 3;
