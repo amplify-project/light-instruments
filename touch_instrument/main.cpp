@@ -3,7 +3,9 @@
 #include <ArduinoJson.h>
 
 uint8_t broadcastAddress[] = {0x2C, 0xF4, 0x32, 0x4E, 0xB2, 0xBE};
+esp_now_peer_info_t peerInfo;
 String deviceName = "touch";
+
 const int touchPins[] = {D1, D2, D3};
 const int touchMinima[] = {39000, 44000, 45000};
 const int numInputs = 3;
@@ -47,7 +49,6 @@ void setup() {
   }
 
   // Register the peer
-  esp_now_peer_info_t peerInfo = {};
   memcpy(peerInfo.peer_addr, broadcastAddress, 6);
   peerInfo.channel = 0;
   peerInfo.encrypt = false;

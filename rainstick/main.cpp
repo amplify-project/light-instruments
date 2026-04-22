@@ -3,6 +3,7 @@
 #include <ArduinoJson.h>
 
 uint8_t broadcastAddress[] = {0x2C, 0xF4, 0x32, 0x4E, 0xB2, 0xBE};
+esp_now_peer_info_t peerInfo;
 String deviceName = "rainstick";
 
 const int analogPin = A1;
@@ -25,7 +26,6 @@ void setup() {
     return;
   }
 
-  esp_now_peer_info_t peerInfo = {};
   memcpy(peerInfo.peer_addr, broadcastAddress, 6);
   peerInfo.channel = 0;
   peerInfo.encrypt = false;

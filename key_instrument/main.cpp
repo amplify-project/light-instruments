@@ -3,6 +3,7 @@
 #include <ArduinoJson.h>
 
 uint8_t broadcastAddress[] = {0x2C, 0xF4, 0x32, 0x4E, 0xB2, 0xBE};
+esp_now_peer_info_t peerInfo;
 String deviceName = "keys";
 
 const int buttonPins[] = {D1, D2, D3};
@@ -51,7 +52,6 @@ void setup() {
   }
 
   // Register Peer
-  esp_now_peer_info_t peerInfo;
   memcpy(peerInfo.peer_addr, broadcastAddress, 6);
   peerInfo.channel = 0;
   peerInfo.encrypt = false;
