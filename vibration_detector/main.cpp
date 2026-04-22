@@ -12,7 +12,7 @@ const int threshold = 5; // Ignore minor voltage jitter
 int lastValue = -1;
 
 void sendJsonData(int val) {
-  StaticJsonDocument<128> doc;
+  JsonDocument doc;
   doc["device"] = deviceName;
   doc["val"] = val;
 

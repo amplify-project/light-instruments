@@ -8,6 +8,23 @@ String deviceName = "rattle";
 const int port = D3;
 int lastState = 0;
 
+void sendEvent() {
+  JsonDocument doc;
+  doc["device"] = deviceName;
+  doc["event"] = true;
+
+  char buffer[128];
+  serializeJson(doc, buffer);
+
+  esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) buffer, strlen(buffer) + 1);
+  Serial.print("Sent: ");
+  Serial.println(buffer);
+
+  if (result != ESP_OK) {
+    Serial.println("Error sending the data");
+  }
+}
+
 void setup() {
   Serial.begin(115200);
 
@@ -46,22 +63,4 @@ void loop() {
   }
 
   delay(10);
-}
-
-void sendEvent() {
-  StaticJsonDocument<128> doc;
-  doc["device"] = deviceName;
-  doc["event"] = true;
-
-  char buffer[128];
-  serializeJson(doc, buffer);
-
-  esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) buffer, strlen(buffer) + 1);
-
-  if (result == ESP_OK) {
-    Serial.print("Sent: ");
-    Serial.println(buffer);
-  } else {
-    Serial.println("Error sending the data");
-  }
 }
