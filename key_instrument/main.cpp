@@ -11,6 +11,27 @@ const int numButtons = 3;
 // State tracking
 int lastStates[] = {HIGH, HIGH, HIGH};
 
+void sendButtonEvent(int id, String action) {
+  JsonDocument doc;
+  doc["device"] = deviceName;
+  doc["id"] = id;
+  doc["event"] = action;
+
+  char buffer[128];
+  serializeJson(doc, buffer);
+
+  esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) buffer, strlen(buffer) + 1);
+
+  Serial.printf("Sending button ID: %d, event: %s\n", id, action);
+
+  if (result == ESP_OK) {
+    Serial.print("Sent: ");
+    Serial.println(buffer);
+  } else {
+    Serial.println("Error sending the data");
+  }
+}
+
 void setup() {
   Serial.begin(115200);
 
@@ -22,6 +43,8 @@ void setup() {
 
   // Initialise ESP-NOW
   WiFi.mode(WIFI_STA);
+  WiFi.disconnect();
+
   if (esp_now_init() != ESP_OK) {
     Serial.println("Error initializing ESP-NOW");
     return;
@@ -45,28 +68,9 @@ void loop() {
 
     // Check for state change
     if (currentState != lastStates[i]) {
-      sendButtonEvent(i + 1, currentState == LOW ? "pressed" : "released");
+      sendButtonEvent(i + 1, currentState == LOW ? "released" : "pressed");
       lastStates[i] = currentState;
     }
   }
   delay(10);
-}
-
-void sendButtonEvent(int id, String action) {
-  StaticJsonDocument<128> doc;
-  doc["device"] = deviceName;
-  doc["id"] = id;
-  doc["event"] = action;
-
-  char buffer[128];
-  serializeJson(doc, buffer);
-
-  esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) buffer, strlen(buffer) + 1);
-
-  if (result == ESP_OK) {
-    Serial.print("Sent: ");
-    Serial.println(buffer);
-  } else {
-    Serial.println("Error sending the data");
-  }
 }
