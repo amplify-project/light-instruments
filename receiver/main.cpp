@@ -28,6 +28,20 @@ void onReceive(const uint8_t *macAddr, const uint8_t *data, int len) {
   newPacketReceived = true;
 }
 
+void updateScreen(JsonDocument &doc) {
+  Serial.print("Device: ");
+  Serial.print(String(doc["device"]));
+  Serial.print(" Data: ");
+  Serial.print(String(doc["data"]));
+
+  display.setColor(OLEDDISPLAY_COLOR::BLACK);
+  display.fillRect(0, 22, 127, 10);
+
+  display.setColor(OLEDDISPLAY_COLOR::WHITE);
+  display.drawString(0, 22, String(doc["device"] + " => " + String(doc["data"])));
+  display.display();
+}
+
 void setup() {
   Serial.begin(115200);
   WiFi.mode(WIFI_STA);
@@ -72,16 +86,7 @@ void loop() {
       return;
     }
 
-    Serial.print("Data: ");
-    Serial.println(String(doc["device"]));
-
-    display.setColor(OLEDDISPLAY_COLOR::BLACK);
-    display.fillRect(0, 22, 127, 10);
-
-    display.setColor(OLEDDISPLAY_COLOR::WHITE);
-    display.drawString(0, 22, "Device: " + String(doc["device"]));
-    display.display();
-
+    updateScreen(doc);
     newPacketReceived = false;
   }
 }
