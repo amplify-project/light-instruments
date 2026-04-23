@@ -42,6 +42,10 @@ void updateScreen(JsonDocument &doc) {
   display.display();
 }
 
+void updateLights(JsonDocument &doc) {
+
+}
+
 void setup() {
   Serial.begin(115200);
   WiFi.mode(WIFI_STA);
@@ -86,7 +90,9 @@ void loop() {
       return;
     }
 
+    updateLights(doc);
     updateScreen(doc);
+
     newPacketReceived = false;
   }
 }
