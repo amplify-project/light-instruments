@@ -15,7 +15,8 @@ int lastValue = -1;
 void sendJsonData(int val) {
   JsonDocument doc;
   doc["device"] = deviceName;
-  doc["val"] = val;
+  doc["port"] = "A1";
+  doc["data"] = val;
 
   char buffer[128];
   serializeJson(doc, buffer);

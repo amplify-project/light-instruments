@@ -12,6 +12,19 @@ const int threshold = 15; // Ignore minor voltage jitter
 int lastValueA1 = -1;
 int lastValueA2 = -1;
 
+void sendJsonData(String port, int val) {
+  StaticJsonDocument<128> doc;
+  doc["device"] = deviceName;
+  doc["port"] = port;
+  doc["data"] = val;
+
+  char buffer[128];
+  serializeJson(doc, buffer);
+  esp_now_send(broadcastAddress, (uint8_t *)buffer, strlen(buffer) + 1);
+
+  Serial.printf("Port: %s | Value: %d\n", port, val);
+}
+
 void setup() {
   Serial.begin(115200);
 
@@ -58,17 +71,4 @@ void loop() {
   }
 
   delay(20);
-}
-
-void sendJsonData(String port, int val) {
-  StaticJsonDocument<128> doc;
-  doc["device"] = deviceName;
-  doc["port"] = port;
-  doc["val"] = val;
-
-  char buffer[128];
-  serializeJson(doc, buffer);
-  esp_now_send(broadcastAddress, (uint8_t *)buffer, strlen(buffer) + 1);
-
-  Serial.printf("Port: %s | Value: %d\n", port, val);
 }

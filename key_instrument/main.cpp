@@ -2,6 +2,9 @@
 #include <WiFi.h>
 #include <ArduinoJson.h>
 
+#define BTN_PRESSED 1
+#define BTN_RELEASED 0
+
 uint8_t broadcastAddress[] = {0x2C, 0xF4, 0x32, 0x4E, 0xB2, 0xBE};
 esp_now_peer_info_t peerInfo;
 String deviceName = "keys";
@@ -12,11 +15,11 @@ const int numButtons = 3;
 // State tracking
 int lastStates[] = {HIGH, HIGH, HIGH};
 
-void sendButtonEvent(int id, String action) {
+void sendButtonEvent(int id, int action) {
   JsonDocument doc;
   doc["device"] = deviceName;
-  doc["id"] = id;
-  doc["event"] = action;
+  doc["port"] = id;
+  doc["data"] = action;
 
   char buffer[128];
   serializeJson(doc, buffer);
@@ -71,7 +74,7 @@ void loop() {
 
     // Check for state change
     if (currentState != lastStates[i]) {
-      sendButtonEvent(i + 1, currentState == LOW ? "released" : "pressed");
+      sendButtonEvent(i + 1, currentState == LOW ? BTN_RELEASED : BTN_PRESSED);
       lastStates[i] = currentState;
     }
   }

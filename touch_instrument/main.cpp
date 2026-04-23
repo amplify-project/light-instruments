@@ -29,8 +29,8 @@ void sendJsonData(int id, int val) {
 
   JsonDocument doc;
   doc["device"] = deviceName;
-  doc["id"] = id;
-  doc["val"] = adjustedVal;
+  doc["port"] = id;
+  doc["data"] = adjustedVal;
 
   char buffer[128];
   serializeJson(doc, buffer);

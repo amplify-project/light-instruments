@@ -12,7 +12,8 @@ int lastState = 0;
 void sendEvent() {
   JsonDocument doc;
   doc["device"] = deviceName;
-  doc["event"] = true;
+  doc["port"] = "D3";
+  doc["data"] = 1;
 
   char buffer[128];
   serializeJson(doc, buffer);
