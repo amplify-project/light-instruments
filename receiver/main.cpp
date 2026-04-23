@@ -1,11 +1,17 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
+#include <Adafruit_NeoPixel.h>
 #include <ESP8266WiFi.h>
 #include <espnow.h>
 
 #include "display.h"
 
 #define OLED_RST D0
+#define LED_COUNT 35
+#define LED_PIN D3
+
+// Initialise NeoPixel LED strip
+Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
 
 volatile bool newPacketReceived = false;
 char dataBuffer[512];
@@ -40,6 +46,19 @@ void setup() {
   display.drawString(0, 0, "MAC Address:");
   display.drawString(0, 10, WiFi.macAddress());
   display.display();
+
+  // Initialise LED strip and set it to medium brightness
+  strip.begin();
+  strip.show();
+  strip.setBrightness(50);
+
+  // Set colour of all LEDs to rgb(255, 0, 0) (red)
+  for (int i=0; i<strip.numPixels(); i++) {
+    strip.setPixelColor(i, strip.Color(255, 0, 0));
+  }
+
+  // Update LED strip
+  strip.show();
 }
 
 void loop() {
