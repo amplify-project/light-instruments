@@ -59,6 +59,8 @@ void setup() {
   }
 
   Serial.println("XIAO ESP32-S3 Touch Sender Ready");
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, LOW);
 }
 
 void loop() {
