@@ -26,7 +26,7 @@ void sendButtonEvent(int id, int action) {
 
   esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) buffer, strlen(buffer) + 1);
 
-  Serial.printf("Sending button ID: %d, event: %s\n", id, action);
+  Serial.printf("Sending button ID: %d, event: %d\n", id, action);
 
   if (result == ESP_OK) {
     Serial.print("Sent: ");

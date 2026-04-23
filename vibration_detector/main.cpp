@@ -4,7 +4,7 @@
 
 uint8_t broadcastAddress[] = {0x2C, 0xF4, 0x32, 0x4E, 0xB2, 0xBE};
 esp_now_peer_info_t peerInfo;
-String deviceName = "percussion_big";
+String deviceName = "percussion_small";
 
 const int analogPin = A1;
 const int threshold = 5; // Ignore minor voltage jitter
