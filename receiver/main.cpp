@@ -29,10 +29,12 @@ void onReceive(const uint8_t *macAddr, const uint8_t *data, int len) {
 }
 
 void updateScreen(JsonDocument &doc) {
-  Serial.print("Device: ");
+  Serial.print("Received: ");
   Serial.print(String(doc["device"]));
-  Serial.print(" Data: ");
-  Serial.print(String(doc["data"]));
+  Serial.print(" ");
+  Serial.print(String(doc["port"]));
+  Serial.print(" ");
+  Serial.println(String(doc["data"]));
 
   display.setColor(OLEDDISPLAY_COLOR::BLACK);
   display.fillRect(0, 22, 127, 10);
@@ -42,8 +44,39 @@ void updateScreen(JsonDocument &doc) {
   display.display();
 }
 
-void updateLights(JsonDocument &doc) {
+void updateLights(JsonDocument doc) {
+  if (String(doc["device"]).equals("keys")) {
+    if (doc["data"] == 1) {
+      Serial.println("Setting brightness to 50");
+      strip.setBrightness(50);
 
+      if (doc["port"] == 3) {
+        Serial.println("Setting colour red");
+
+        for (int i=0; i<strip.numPixels(); i++) {
+          strip.setPixelColor(i, strip.Color(255, 0, 0));
+        }
+      } else if (doc["port"] == 2) {
+        Serial.println("Setting colour green");
+
+        for (int i=0; i<strip.numPixels(); i++) {
+          strip.setPixelColor(i, strip.Color(0, 255, 0));
+        }
+      } else {
+        Serial.println("Setting colour blue");
+
+        for (int i=0; i<strip.numPixels(); i++) {
+          strip.setPixelColor(i, strip.Color(0, 0, 255));
+        }
+      }
+    } else {
+      Serial.println("Setting brightness to 0");
+      strip.setBrightness(0);
+    }
+
+    Serial.println("Update strip");
+    strip.show();
+  }
 }
 
 void setup() {
