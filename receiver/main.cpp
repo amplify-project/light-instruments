@@ -76,6 +76,37 @@ void updateLights(JsonDocument doc) {
 
     Serial.println("Update strip");
     strip.show();
+  } else if (String(doc["device"]).equals("touch")) {
+    strip.setBrightness(map(doc["data"], 0, 4096, 0, 255));
+    strip.show();
+  } else if (String(doc["device"]).equals("rattle")) {
+    uint8_t prevBrightness = strip.getBrightness();
+
+    strip.setBrightness(200);
+    strip.show();
+
+    delay(50);
+    strip.setBrightness(prevBrightness);
+    strip.show();
+  } else if (String(doc["device"]).equals("percussion_big")) {
+    int adjustedValue = doc["data"];
+    Serial.printf("vibration %d\n", adjustedValue);
+
+    if (adjustedValue < 50) {
+      strip.setBrightness(50);
+    } else if (adjustedValue > 255){
+      strip.setBrightness(map(adjustedValue, 0, 4096, 0, 255));
+    } else {
+      strip.setBrightness(adjustedValue);
+    }
+
+    strip.show();
+  } else if (String(doc["device"]).equals("percussion_small")) {
+    int adjustedValue = map(doc["data"], 0, 4096, 0, 254);
+    Serial.printf("vibration %d\n", adjustedValue);
+
+    strip.setBrightness(adjustedValue);
+    strip.show();
   }
 }
 
