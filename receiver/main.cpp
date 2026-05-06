@@ -38,6 +38,34 @@ volatile bool newPacketReceived = false;
 char dataBuffer[512];
 Display display(SDA, SCL, OLED_RST, GEOMETRY_128_32);
 
+int calculateCorrectedBrightness(float intensity) {
+  int targetBrightness = intensity * 255;
+  return pgm_read_byte(&gamma8[targetBrightness]);
+}
+
+uint32_t getColorWithBrightness(int r, int g, int b) {
+  int correctedBrightness = calculateCorrectedBrightness(brightness);
+
+  return strip.Color(
+    (r * correctedBrightness) / 255,
+    (g * correctedBrightness) / 255,
+    (b * correctedBrightness) / 255
+  );
+}
+
+void setBrightness(float newBrightness) {
+  brightness = newBrightness;
+
+  for (int i = 0; i < strip.numPixels(); i++) {
+    uint32_t currentColor = strip.getPixelColor(i);
+    strip.setPixelColor(i, getColorWithBrightness(
+      (byte)(currentColor >> 16),
+      (byte)(currentColor >> 8),
+      (byte)(currentColor >> 0)
+    ));
+  }
+}
+
 void initScreen() {
   display.init();
   display.flipScreenVertically();
