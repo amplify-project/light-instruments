@@ -7,15 +7,15 @@ esp_now_peer_info_t peerInfo;
 String deviceName = "touch";
 
 const int touchPins[] = {D1, D2, D3};
-const int touchMinima[] = {39000, 44000, 45000};
+const uint32_t touchMinima[] = {39000, 44000, 45000};
 const int numInputs = 3;
 const int sensitivityThreshold = 3; // Minimum change to trigger a send
 
 // State tracking
-int lastValues[] = {0, 0, 0};
+uint32_t lastValues[] = {0, 0, 0};
 
-void sendJsonData(int id, int val) {
-  int adjustedVal = val - touchMinima[id - 1];
+int processValue(int i, uint32_t val) {
+  int adjustedVal = val - touchMinima[i];
 
   if (adjustedVal < 0) {
     adjustedVal = 0;
@@ -25,18 +25,22 @@ void sendJsonData(int id, int val) {
     adjustedVal = 50000;
   }
 
-  adjustedVal = map(adjustedVal, 0, 50000, 0, 4096);
+  return map(adjustedVal, 0, 50000, 0, 4096);
+}
 
+void sendJsonData(int r, int g, int b) {
   JsonDocument doc;
+
   doc["device"] = deviceName;
-  doc["port"] = id;
-  doc["data"] = adjustedVal;
+  doc["r"] = r;
+  doc["g"] = g;
+  doc["b"] = b;
 
   char buffer[128];
   serializeJson(doc, buffer);
 
   esp_now_send(broadcastAddress, (uint8_t *) buffer, strlen(buffer) + 1);
-  Serial.printf("ID: %d | Raw Value: %d | Adjusted Value: %d\n", id, val, adjustedVal);
+  Serial.printf("r: %04d g: %04d b: %04d\n", r, g, b);
 }
 
 void setup() {
@@ -64,15 +68,33 @@ void setup() {
 }
 
 void loop() {
-  for (int i = 0; i < numInputs; i++) {
-    int currentValue = touchRead(touchPins[i]);
+  bool sendData = false;
 
-    // Send data if the change exceeds our threshold
-    if (abs(currentValue - lastValues[i]) > sensitivityThreshold) {
-      sendJsonData(i + 1, currentValue);
-      lastValues[i] = currentValue;
-    }
+  uint32_t r = touchRead(touchPins[0]);
+  if ((r - lastValues[0]) > sensitivityThreshold) {
+    sendData = true;
+    lastValues[0] = r;
   }
 
-  delay(30);
+  uint32_t g = touchRead(touchPins[1]);
+  if ((g - lastValues[1]) > sensitivityThreshold) {
+    sendData = true;
+    lastValues[1] = g;
+  }
+
+  uint32_t b = touchRead(touchPins[2]);
+  if ((b - lastValues[2]) > sensitivityThreshold) {
+    sendData = true;
+    lastValues[2] = b;
+  }
+
+  if (sendData) {
+    sendJsonData(
+      processValue(0, r),
+      processValue(1, g),
+      processValue(2, b)
+    );
+  }
+
+  delay(100);
 }
