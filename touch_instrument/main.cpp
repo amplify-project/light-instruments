@@ -7,7 +7,7 @@ esp_now_peer_info_t peerInfo;
 String deviceName = "touch";
 
 const int touchPins[] = {D1, D2, D3};
-const uint32_t touchMinima[] = {39000, 44000, 45000};
+const uint32_t touchMinima[] = {39000, 45100, 46100};
 const int numInputs = 3;
 const int sensitivityThreshold = 3; // Minimum change to trigger a send
 
