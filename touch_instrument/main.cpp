@@ -88,11 +88,13 @@ void loop() {
   }
 
   if (sendData) {
-    sendJsonData(
-      processValue(0, r),
-      processValue(1, g),
-      processValue(2, b)
-    );
+    int newR = processValue(0, r);
+    int newG = processValue(1, g);
+    int newB = processValue(2, b);
+
+    if (newR + newG + newB > 0) {
+      sendJsonData(newR, newG, newB);
+    }
   }
 
   delay(100);
