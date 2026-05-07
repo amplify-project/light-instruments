@@ -2,20 +2,21 @@
 #include <WiFi.h>
 #include <ArduinoJson.h>
 
+#define PHOTODIODE_PIN A3
+
 uint8_t broadcastAddress[] = {0x2C, 0xF4, 0x32, 0x4E, 0xB2, 0xBE};
 esp_now_peer_info_t peerInfo;
 String deviceName = "rainstick";
 
-const int analogPin = A1;
-const int threshold = 15; // Ignore minor voltage jitter
+const int threshold = 50; // Ignore minor voltage jitter
 
 // State tracking
 int lastValue = -1;
 
 void sendJsonData(int val) {
-  StaticJsonDocument<128> doc;
+  JsonDocument doc;
   doc["device"] = deviceName;
-  doc["port"] = "A1";
+  doc["port"] = "A3";
   doc["data"] = val;
 
   char buffer[128];
@@ -28,7 +29,7 @@ void sendJsonData(int val) {
 void setup() {
   Serial.begin(115200);
 
-  pinMode(A1, INPUT);
+  pinMode(PHOTODIODE_PIN, INPUT);
   analogReadResolution(12);
 
   WiFi.mode(WIFI_STA);
@@ -48,13 +49,13 @@ void setup() {
     return;
   }
 
-  Serial.println("XIAO ESP32-S3 vibration detector ready");
+  Serial.println("XIAO ESP32-S3 IR detector ready");
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, LOW);
 }
 
 void loop() {
-  int currentValue = analogRead(analogPin);
+  int currentValue = analogRead(PHOTODIODE_PIN);
 
   // Only send if the value has changed significantly
   if (abs(currentValue - lastValue) > threshold) {
@@ -62,5 +63,5 @@ void loop() {
     lastValue = currentValue;
   }
 
-  delay(20);
+  delay(50);
 }
