@@ -11,8 +11,8 @@
 #define LED_PIN D3
 
 const uint8_t PROGMEM gamma8[] = {
-  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-  0,  0,  0,  0,  0,  0,  0,  0,  1,  1,  1,  1,  1,  1,  1,  1,
+  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
+  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
   1,  1,  1,  1,  2,  2,  2,  2,  2,  2,  2,  2,  3,  3,  3,  3,
   4,  4,  4,  4,  5,  5,  5,  5,  6,  6,  6,  7,  7,  7,  8,  8,
   8,  9,  9,  9, 10, 10, 11, 11, 11, 12, 12, 13, 13, 14, 14, 15,
@@ -30,6 +30,7 @@ const uint8_t PROGMEM gamma8[] = {
 };
 
 float brightness = 0.5;
+uint32_t presetColor = 0xFF0000;
 
 // Initialise NeoPixel LED strip
 Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
@@ -54,10 +55,15 @@ uint32_t getColorWithBrightness(int r, int g, int b) {
 }
 
 void setBrightness(float newBrightness) {
-  brightness = newBrightness;
+  if (newBrightness < 0.2) {
+    brightness = 0.2;
+  } else {
+    brightness = newBrightness;
+  }
 
   for (int i = 0; i < strip.numPixels(); i++) {
     uint32_t currentColor = strip.getPixelColor(i);
+
     strip.setPixelColor(i, getColorWithBrightness(
       (byte)(currentColor >> 16),
       (byte)(currentColor >> 8),
@@ -89,72 +95,96 @@ void updateScreen(JsonDocument &doc) {
   display.fillRect(0, 22, 127, 10);
 
   display.setColor(OLEDDISPLAY_COLOR::WHITE);
-  display.drawString(0, 22, String(doc["device"] + " => " + String(doc["data"])));
+  if (String(doc["device"]).equals("touch")) {
+    display.drawString(0, 22, String(doc["device"] + " => " + String(doc["r"]) + "|" + String(doc["g"]) + "|" + String(doc["b"])));
+  } else {
+    display.drawString(0, 22, String(doc["device"] + " => " + String(doc["data"])));
+  }
   display.display();
 }
 
 void updateLights(JsonDocument doc) {
   if (String(doc["device"]).equals("keys")) {
     if (doc["data"] == 1) {
-      Serial.println("Setting brightness to 50");
-      strip.setBrightness(50);
+      setBrightness(0.8);
 
       if (doc["port"] == 3) {
         Serial.println("Setting colour red");
+        presetColor = 0xFF0000;
 
         for (int i=0; i<strip.numPixels(); i++) {
-          strip.setPixelColor(i, strip.Color(255, 0, 0));
+          strip.setPixelColor(i, getColorWithBrightness(255, 0, 0));
         }
       } else if (doc["port"] == 2) {
         Serial.println("Setting colour green");
+        presetColor = 0x00FF00;
 
         for (int i=0; i<strip.numPixels(); i++) {
-          strip.setPixelColor(i, strip.Color(0, 255, 0));
+          strip.setPixelColor(i, getColorWithBrightness(0, 255, 0));
         }
       } else {
         Serial.println("Setting colour blue");
+        presetColor = 0x0000FF;
 
         for (int i=0; i<strip.numPixels(); i++) {
-          strip.setPixelColor(i, strip.Color(0, 0, 255));
+          strip.setPixelColor(i, getColorWithBrightness(0, 0, 255));
         }
       }
     } else {
       Serial.println("Setting brightness to 0");
-      strip.setBrightness(0);
+      setBrightness(0.2);
     }
 
     Serial.println("Update strip");
     strip.show();
-  } else if (String(doc["device"]).equals("touch")) {
-    strip.setBrightness(map(doc["data"], 0, 4096, 0, 255));
-    strip.show();
   } else if (String(doc["device"]).equals("rattle")) {
-    uint8_t prevBrightness = strip.getBrightness();
+    uint8_t prevBrightness = brightness;
+    Serial.print("rattle ");
+    Serial.println(prevBrightness);
 
-    strip.setBrightness(200);
+    setBrightness(0.9);
+    for (int i=0; i<strip.numPixels(); i++) {
+      strip.setPixelColor(i, presetColor);
+    }
+
     strip.show();
 
-    delay(50);
-    strip.setBrightness(prevBrightness);
+    delay(100);
+    Serial.print("rattle off ");
+    Serial.println(prevBrightness);
+    setBrightness(prevBrightness);
+    strip.show();
+  } else if (String(doc["device"]).equals("touch")) {
+    setBrightness(0.5);
+
+    for (int i=0; i<strip.numPixels(); i++) {
+      strip.setPixelColor(i, getColorWithBrightness(
+        map(doc["r"], 0, 4096, 10, 255),
+        map(doc["g"], 0, 4096, 10, 255),
+        map(doc["b"], 0, 4096, 10, 255)
+      ));
+    }
+
     strip.show();
   } else if (String(doc["device"]).equals("percussion_big")) {
     int adjustedValue = doc["data"];
     Serial.printf("vibration %d\n", adjustedValue);
+    float intensity = (adjustedValue < 50) ? 0.2 : adjustedValue / 4096.0;
 
-    if (adjustedValue < 50) {
-      strip.setBrightness(50);
-    } else if (adjustedValue > 255){
-      strip.setBrightness(map(adjustedValue, 0, 4096, 0, 255));
-    } else {
-      strip.setBrightness(adjustedValue);
+    for (int i=0; i<strip.numPixels(); i++) {
+      strip.setPixelColor(i, strip.Color(0, 255 * intensity, 0));
     }
 
     strip.show();
   } else if (String(doc["device"]).equals("percussion_small")) {
-    int adjustedValue = map(doc["data"], 0, 4096, 0, 254);
+    int adjustedValue = map(doc["data"], 0, 4096, 0, 255);
     Serial.printf("vibration %d\n", adjustedValue);
+    float intensity = adjustedValue / 255.0;
 
-    strip.setBrightness(adjustedValue);
+    for (int i=0; i<strip.numPixels(); i++) {
+      strip.setPixelColor(i, strip.Color(255 * intensity, 0, 0));
+    }
+
     strip.show();
   }
 }
@@ -181,7 +211,7 @@ void setup() {
   // Initialise LED strip and set it to medium brightness
   strip.begin();
   strip.show();
-  strip.setBrightness(50);
+  setBrightness(0.2);
 
   // Set colour of all LEDs to rgb(255, 0, 0) (red)
   for (int i=0; i<strip.numPixels(); i++) {
