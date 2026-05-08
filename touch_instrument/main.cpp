@@ -7,8 +7,8 @@ esp_now_peer_info_t peerInfo;
 String deviceName = "touch";
 
 const int touchPins[] = {D1, D2, D3};
-const uint32_t touchMinima[] = {39000, 45100, 46100};
-const int sensitivityThreshold = 3; // Minimum change to trigger a send
+const int sensitivityThreshold = 50; // Minimum change to trigger a send
+uint32_t touchMinima[] = {39000, 45100, 46100};
 
 // State tracking
 uint32_t lastValues[] = {0, 0, 0};
@@ -44,6 +44,11 @@ void sendJsonData(int r, int g, int b) {
 
 void setup() {
   Serial.begin(115200);
+
+  for (int i=0; i<3; i++) {
+    uint32_t baseline = touchRead(touchPins[i]);
+    touchMinima[i] = baseline;
+  }
 
   WiFi.mode(WIFI_STA);
   if (esp_now_init() != ESP_OK) {
