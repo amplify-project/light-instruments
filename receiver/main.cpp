@@ -1,192 +1,19 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
-#include <Adafruit_NeoPixel.h>
-#include <ESP8266WiFi.h>
-#include <espnow.h>
-
-#include "display.h"
-
-#define OLED_RST D0
-#define LED_COUNT 35
-#define LED_PIN D3
-
-const uint8_t PROGMEM gamma8[] = {
-  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
-  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
-  1,  1,  1,  1,  2,  2,  2,  2,  2,  2,  2,  2,  3,  3,  3,  3,
-  4,  4,  4,  4,  5,  5,  5,  5,  6,  6,  6,  7,  7,  7,  8,  8,
-  8,  9,  9,  9, 10, 10, 11, 11, 11, 12, 12, 13, 13, 14, 14, 15,
-  15, 16, 16, 17, 17, 18, 18, 19, 19, 20, 20, 21, 21, 22, 23, 23,
-  24, 25, 25, 26, 27, 27, 28, 29, 29, 30, 31, 32, 32, 33, 34, 35,
-  35, 36, 37, 38, 39, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49,
-  50, 50, 51, 52, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 66,
-  67, 68, 69, 70, 72, 73, 74, 75, 77, 78, 79, 81, 82, 83, 85, 86,
-  87, 89, 90, 92, 93, 95, 96, 98, 99,101,102,104,105,107,109,110,
-  112,114,115,117,119,120,122,124,126,127,129,131,133,135,137,138,
-  140,142,144,146,148,150,152,154,156,158,160,162,164,167,169,171,
-  173,175,177,180,182,184,186,189,191,193,196,198,200,203,205,208,
-  210,213,215,218,220,223,225,228,231,233,236,239,241,244,247,249,
-  252,255
-};
-
-float brightness = 0.5;
-uint32_t presetColor = 0xFF0000;
-
-// Initialise NeoPixel LED strip
-Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
+#include <WiFi.h>
+#include <esp_now.h>
 
 volatile bool newPacketReceived = false;
 char dataBuffer[512];
-Display display(SDA, SCL, OLED_RST, GEOMETRY_128_32);
-
-int calculateCorrectedBrightness(float intensity) {
-  int targetBrightness = intensity * 255;
-  return pgm_read_byte(&gamma8[targetBrightness]);
-}
-
-uint32_t getColorWithBrightness(int r, int g, int b) {
-  int correctedBrightness = calculateCorrectedBrightness(brightness);
-
-  return strip.Color(
-    (r * correctedBrightness) / 255,
-    (g * correctedBrightness) / 255,
-    (b * correctedBrightness) / 255
-  );
-}
-
-void setBrightness(float newBrightness) {
-  if (newBrightness < 0.2) {
-    brightness = 0.2;
-  } else {
-    brightness = newBrightness;
-  }
-
-  for (int i = 0; i < strip.numPixels(); i++) {
-    uint32_t currentColor = strip.getPixelColor(i);
-
-    strip.setPixelColor(i, getColorWithBrightness(
-      (byte)(currentColor >> 16),
-      (byte)(currentColor >> 8),
-      (byte)(currentColor >> 0)
-    ));
-  }
-}
-
-void initScreen() {
-  display.init();
-  display.flipScreenVertically();
-  display.clear();
-}
+uint8_t broadcastAddress[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 void onReceive(const uint8_t *macAddr, const uint8_t *data, int len) {
-  memcpy(dataBuffer, data, len);
+  int safeLen = min(len, (int)(sizeof(dataBuffer) - 1));
+
+  memcpy(dataBuffer, data, safeLen);
+  dataBuffer[safeLen] = '\0';
+
   newPacketReceived = true;
-}
-
-void updateScreen(JsonDocument &doc) {
-  Serial.print("Received: ");
-  Serial.print(String(doc["device"]));
-  Serial.print(" ");
-  Serial.print(String(doc["port"]));
-  Serial.print(" ");
-  Serial.println(String(doc["data"]));
-
-  display.setColor(OLEDDISPLAY_COLOR::BLACK);
-  display.fillRect(0, 22, 127, 10);
-
-  display.setColor(OLEDDISPLAY_COLOR::WHITE);
-  if (String(doc["device"]).equals("touch")) {
-    display.drawString(0, 22, String(doc["device"] + " => " + String(doc["r"]) + "|" + String(doc["g"]) + "|" + String(doc["b"])));
-  } else {
-    display.drawString(0, 22, String(doc["device"] + " => " + String(doc["data"])));
-  }
-  display.display();
-}
-
-void updateLights(JsonDocument doc) {
-  if (String(doc["device"]).equals("keys")) {
-    if (doc["data"] == 1) {
-      setBrightness(0.8);
-
-      if (doc["port"] == 3) {
-        Serial.println("Setting colour red");
-        presetColor = 0xFF0000;
-
-        for (int i=0; i<strip.numPixels(); i++) {
-          strip.setPixelColor(i, getColorWithBrightness(255, 0, 0));
-        }
-      } else if (doc["port"] == 2) {
-        Serial.println("Setting colour green");
-        presetColor = 0x00FF00;
-
-        for (int i=0; i<strip.numPixels(); i++) {
-          strip.setPixelColor(i, getColorWithBrightness(0, 255, 0));
-        }
-      } else {
-        Serial.println("Setting colour blue");
-        presetColor = 0x0000FF;
-
-        for (int i=0; i<strip.numPixels(); i++) {
-          strip.setPixelColor(i, getColorWithBrightness(0, 0, 255));
-        }
-      }
-    } else {
-      Serial.println("Setting brightness to 0");
-      setBrightness(0.2);
-    }
-
-    Serial.println("Update strip");
-    strip.show();
-  } else if (String(doc["device"]).equals("rattle")) {
-    uint8_t prevBrightness = brightness;
-    Serial.print("rattle ");
-    Serial.println(prevBrightness);
-
-    setBrightness(0.9);
-    for (int i=0; i<strip.numPixels(); i++) {
-      strip.setPixelColor(i, presetColor);
-    }
-
-    strip.show();
-
-    delay(100);
-    Serial.print("rattle off ");
-    Serial.println(prevBrightness);
-    setBrightness(prevBrightness);
-    strip.show();
-  } else if (String(doc["device"]).equals("touch")) {
-    setBrightness(0.5);
-
-    for (int i=0; i<strip.numPixels(); i++) {
-      strip.setPixelColor(i, getColorWithBrightness(
-        map(doc["r"], 0, 4096, 10, 255),
-        map(doc["g"], 0, 4096, 10, 255),
-        map(doc["b"], 0, 4096, 10, 255)
-      ));
-    }
-
-    strip.show();
-  } else if (String(doc["device"]).equals("percussion_big")) {
-    int adjustedValue = doc["data"];
-    Serial.printf("vibration %d\n", adjustedValue);
-    float intensity = (adjustedValue < 50) ? 0.2 : adjustedValue / 4096.0;
-
-    for (int i=0; i<strip.numPixels(); i++) {
-      strip.setPixelColor(i, strip.Color(0, 255 * intensity, 0));
-    }
-
-    strip.show();
-  } else if (String(doc["device"]).equals("percussion_small")) {
-    int adjustedValue = map(doc["data"], 0, 4096, 0, 255);
-    Serial.printf("vibration %d\n", adjustedValue);
-    float intensity = adjustedValue / 255.0;
-
-    for (int i=0; i<strip.numPixels(); i++) {
-      strip.setPixelColor(i, strip.Color(255 * intensity, 0, 0));
-    }
-
-    strip.show();
-  }
 }
 
 void setup() {
@@ -194,48 +21,96 @@ void setup() {
   WiFi.mode(WIFI_STA);
 
   if (esp_now_init() != 0) {
-    Serial.println("Could not initialise ESP Now");
+    // Could not initialise ESP Now
     return;
   }
 
   esp_now_register_recv_cb(esp_now_recv_cb_t(onReceive));
-  Serial.println("ESP Now callback registered. Waiting for messages...");
 
-  initScreen();
+  // Add broadcast peer for sending commands
+  esp_now_peer_info_t peerInfo = {};
+  memset(&peerInfo, 0, sizeof(peerInfo));
 
-  display.setFont(ArialMT_Plain_10);
-  display.drawString(0, 0, "MAC Address:");
-  display.drawString(0, 10, WiFi.macAddress());
-  display.display();
-
-  // Initialise LED strip and set it to medium brightness
-  strip.begin();
-  strip.show();
-  setBrightness(0.2);
-
-  // Set colour of all LEDs to rgb(255, 0, 0) (red)
-  for (int i=0; i<strip.numPixels(); i++) {
-    strip.setPixelColor(i, strip.Color(255, 0, 0));
+  for (int i = 0; i < 6; i++) {
+    peerInfo.peer_addr[i] = 0xFF;
   }
 
-  // Update LED strip
-  strip.show();
+  peerInfo.channel = 0;
+  peerInfo.encrypt = false;
+
+  if (esp_now_add_peer(&peerInfo) != ESP_OK) {
+    // Failed to add broadcast peer
+    return;
+  }
+
+  // Turn on builtin LED to indicate successful initialization
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, LOW);
 }
 
 void loop() {
+  // Handle ESP Now -> Serial
   if (newPacketReceived) {
+    newPacketReceived = false;
+
     JsonDocument doc;
     DeserializationError error = deserializeJson(doc, dataBuffer);
 
-    if (error) {
-      Serial.print("deserializeJson() failed: ");
-      Serial.println(error.f_str());
-      return;
+    if (!error) {
+      const char* device = doc["device"];
+
+      if (device) {
+        if (!doc["port"].isNull() && !doc["data"].isNull()) {
+          const char* port = doc["port"];
+          int data = doc["data"];
+
+          Serial.printf("%s,%s,%d\n", device, port, data);
+        } else {
+          // Check for RGB keys (touch instrument)
+          if (!doc["r"].isNull()) {
+            Serial.printf("%s,r,%d\n", device, (int)doc["r"]);
+          }
+
+          if (!doc["g"].isNull()) {
+            Serial.printf("%s,g,%d\n", device, (int)doc["g"]);
+          }
+
+          if (!doc["b"].isNull()) {
+            Serial.printf("%s,b,%d\n", device, (int)doc["b"]);
+          }
+        }
+      }
     }
+  }
 
-    updateLights(doc);
-    updateScreen(doc);
+  // Handle Serial -> ESP Now
+  if (Serial.available()) {
+    String line = Serial.readStringUntil('\n');
+    line.trim();
 
-    newPacketReceived = false;
+    if (line.length() > 0) {
+      // Expected format: device,port,command,value
+      int firstComma = line.indexOf(',');
+      int secondComma = line.indexOf(',', firstComma + 1);
+      int thirdComma = line.indexOf(',', secondComma + 1);
+
+      if (firstComma != -1 && secondComma != -1 && thirdComma != -1) {
+        String device = line.substring(0, firstComma);
+        String port = line.substring(firstComma + 1, secondComma);
+        String command = line.substring(secondComma + 1, thirdComma);
+        String valueStr = line.substring(thirdComma + 1);
+
+        JsonDocument doc;
+        doc["device"] = device;
+        doc["port"] = port;
+        doc["command"] = command;
+        doc["data"] = valueStr.toInt();
+
+        char buffer[256];
+
+        serializeJson(doc, buffer);
+        esp_now_send(broadcastAddress, (uint8_t *)buffer, strlen(buffer) + 1);
+      }
+    }
   }
 }
