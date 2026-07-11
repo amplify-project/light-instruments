@@ -8,6 +8,8 @@
 std::vector<String> packetQueue;
 std::mutex queueMtx;
 uint8_t broadcastAddress[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+volatile unsigned long ledFlashTime = 0;
+const int FLASH_DURATION = 50;
 
 void onReceive(const uint8_t *macAddr, const uint8_t *data, int len) {
   // Create a string from the received data
@@ -16,6 +18,10 @@ void onReceive(const uint8_t *macAddr, const uint8_t *data, int len) {
   // Protect the queue with a mutex since this callback runs in a different task context
   std::lock_guard<std::mutex> lock(queueMtx);
   packetQueue.push_back(msg);
+
+  // Flash LED for activity
+  digitalWrite(LED_BUILTIN, HIGH); // Turn OFF (active low)
+  ledFlashTime = millis();
 }
 
 void setup() {
@@ -51,6 +57,12 @@ void setup() {
 }
 
 void loop() {
+  // Handle LED flash timer
+  if (ledFlashTime > 0 && millis() - ledFlashTime > FLASH_DURATION) {
+    digitalWrite(LED_BUILTIN, LOW); // Turn back ON (Ready state)
+    ledFlashTime = 0;
+  }
+
   // Handle ESP Now -> Serial
   String currentPacket;
   bool hasPacket = false;
@@ -123,6 +135,10 @@ void loop() {
 
         serializeJson(doc, buffer);
         esp_now_send(broadcastAddress, (uint8_t *)buffer, strlen(buffer) + 1);
+
+        // Flash LED for activity
+        digitalWrite(LED_BUILTIN, HIGH); // Turn OFF (active low)
+        ledFlashTime = millis();
       }
     }
   }
