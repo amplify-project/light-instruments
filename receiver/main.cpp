@@ -2,18 +2,20 @@
 #include <ArduinoJson.h>
 #include <WiFi.h>
 #include <esp_now.h>
+#include <vector>
+#include <mutex>
 
-volatile bool newPacketReceived = false;
-char dataBuffer[512];
+std::vector<String> packetQueue;
+std::mutex queueMtx;
 uint8_t broadcastAddress[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 void onReceive(const uint8_t *macAddr, const uint8_t *data, int len) {
-  int safeLen = min(len, (int)(sizeof(dataBuffer) - 1));
+  // Create a string from the received data
+  String msg((const char*)data, len);
 
-  memcpy(dataBuffer, data, safeLen);
-  dataBuffer[safeLen] = '\0';
-
-  newPacketReceived = true;
+  // Protect the queue with a mutex since this callback runs in a different task context
+  std::lock_guard<std::mutex> lock(queueMtx);
+  packetQueue.push_back(msg);
 }
 
 void setup() {
@@ -50,11 +52,22 @@ void setup() {
 
 void loop() {
   // Handle ESP Now -> Serial
-  if (newPacketReceived) {
-    newPacketReceived = false;
+  String currentPacket;
+  bool hasPacket = false;
 
+  {
+    std::lock_guard<std::mutex> lock(queueMtx);
+
+    if (!packetQueue.empty()) {
+      currentPacket = packetQueue.front();
+      packetQueue.erase(packetQueue.begin());
+      hasPacket = true;
+    }
+  }
+
+  if (hasPacket) {
     JsonDocument doc;
-    DeserializationError error = deserializeJson(doc, dataBuffer);
+    DeserializationError error = deserializeJson(doc, currentPacket);
 
     if (!error) {
       const char* device = doc["device"];
