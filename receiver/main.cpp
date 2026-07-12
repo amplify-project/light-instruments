@@ -4,20 +4,34 @@
 #include <esp_now.h>
 #include <vector>
 #include <mutex>
+#include <map>
+#include <array>
 
-std::vector<String> packetQueue;
+struct Packet {
+  uint8_t mac[6];
+  String data;
+};
+
+std::vector<Packet> packetQueue;
 std::mutex queueMtx;
 uint8_t broadcastAddress[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+
+std::map<String, std::array<uint8_t, 6>> discoveredDevices;
+unsigned long lastDiscoveryTime = 0;
+const unsigned long DISCOVERY_INTERVAL = 10000; // 10 seconds
+
 volatile unsigned long ledFlashTime = 0;
 const int FLASH_DURATION = 50;
 
 void onReceive(const uint8_t *macAddr, const uint8_t *data, int len) {
-  // Create a string from the received data
-  String msg((const char*)data, len);
+  // Create a packet structure to store data and MAC
+  Packet p;
+  memcpy(p.mac, macAddr, 6);
+  p.data = String((const char*)data, len);
 
   // Protect the queue with a mutex since this callback runs in a different task context
   std::lock_guard<std::mutex> lock(queueMtx);
-  packetQueue.push_back(msg);
+  packetQueue.push_back(p);
 
   // Flash LED for activity
   digitalWrite(LED_BUILTIN, HIGH); // Turn OFF (active low)
@@ -54,6 +68,14 @@ void setup() {
   // Turn on builtin LED to indicate successful initialization
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, LOW);
+
+  // Send initial discovery message
+  JsonDocument discoveryDoc;
+  discoveryDoc["command"] = "discovery";
+  char buffer[128];
+  serializeJson(discoveryDoc, buffer);
+  esp_now_send(broadcastAddress, (uint8_t *)buffer, strlen(buffer) + 1);
+  lastDiscoveryTime = millis();
 }
 
 void loop() {
@@ -63,8 +85,22 @@ void loop() {
     ledFlashTime = 0;
   }
 
+  // Handle discovery broadcast
+  if (millis() - lastDiscoveryTime > DISCOVERY_INTERVAL) {
+    lastDiscoveryTime = millis();
+    JsonDocument doc;
+    doc["command"] = "discovery";
+    char buffer[128];
+    serializeJson(doc, buffer);
+    esp_now_send(broadcastAddress, (uint8_t *)buffer, strlen(buffer) + 1);
+
+    // Flash LED for activity
+    digitalWrite(LED_BUILTIN, HIGH); // Turn OFF (active low)
+    ledFlashTime = millis();
+  }
+
   // Handle ESP Now -> Serial
-  String currentPacket;
+  Packet currentPacket;
   bool hasPacket = false;
 
   {
@@ -79,7 +115,7 @@ void loop() {
 
   if (hasPacket) {
     JsonDocument doc;
-    DeserializationError error = deserializeJson(doc, currentPacket);
+    DeserializationError error = deserializeJson(doc, currentPacket.data);
 
     if (!error) {
       const char* device = doc["device"];
@@ -132,9 +168,23 @@ void loop() {
         doc["data"] = valueStr.toInt();
 
         char buffer[256];
-
         serializeJson(doc, buffer);
-        esp_now_send(broadcastAddress, (uint8_t *)buffer, strlen(buffer) + 1);
+
+        // Check if we know the device's MAC address
+        if (discoveredDevices.count(device)) {
+          uint8_t* targetMac = discoveredDevices[device].data();
+
+          // Ensure the device is added as a peer
+          if (!esp_now_is_peer_exist(targetMac)) {
+            esp_now_peer_info_t peerInfo = {};
+            memcpy(peerInfo.peer_addr, targetMac, 6);
+            peerInfo.channel = 0;
+            peerInfo.encrypt = false;
+            esp_now_add_peer(&peerInfo);
+          }
+
+          esp_now_send(targetMac, (uint8_t *)buffer, strlen(buffer) + 1);
+        }
 
         // Flash LED for activity
         digitalWrite(LED_BUILTIN, HIGH); // Turn OFF (active low)
