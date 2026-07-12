@@ -67,6 +67,35 @@ void handleDiscoveryInterval() {
   }
 }
 
+void addPeer(const uint8_t *mac) {
+  if (!esp_now_is_peer_exist(mac)) {
+    esp_now_peer_info_t peerInfo = {};
+    memcpy(peerInfo.peer_addr, mac, 6);
+    peerInfo.channel = 0;
+    peerInfo.encrypt = false;
+    esp_now_add_peer(&peerInfo);
+  }
+}
+
+void processCommand(const Packet& packet, const JsonDocument& doc) {
+  if (doc["command"] == "discoveryResponse") {
+    const char* device = doc["device"];
+    std::array<uint8_t, 6> mac;
+    memcpy(mac.data(), packet.mac, 6);
+
+    discoveredDevices[device] = mac;
+  } else if (doc["command"] == "discovery") {
+    JsonDocument responseDoc;
+    responseDoc["device"] = "receiver";
+    responseDoc["command"] = "discoveryResponse";
+
+    char buffer[128];
+    serializeJson(responseDoc, buffer);
+    addPeer(packet.mac);
+    esp_now_send(packet.mac, (uint8_t *)buffer, strlen(buffer) + 1);
+  }
+}
+
 void processIncomingPackets() {
   Packet currentPacket;
   bool hasPacket = false;
@@ -98,9 +127,10 @@ void processIncomingPackets() {
     return;
   }
 
-  std::array<uint8_t, 6> mac;
-  memcpy(mac.data(), currentPacket.mac, 6);
-  discoveredDevices[device] = mac;
+  if (!doc["command"].isNull()) {
+    processCommand(currentPacket, doc);
+    return;
+  }
 
   if (!doc["port"].isNull() && !doc["data"].isNull()) {
     Serial.printf("%s,%s,%d\n", device, (const char*)doc["port"], (int)doc["data"]);
@@ -137,13 +167,7 @@ void sendDeviceCommand(const String& device, const String& port, const String& c
   uint8_t* mac = discoveredDevices[device].data();
 
   // Ensure the device is added as a peer
-  if (!esp_now_is_peer_exist(mac)) {
-    esp_now_peer_info_t peerInfo = {};
-    memcpy(peerInfo.peer_addr, mac, 6);
-    peerInfo.channel = 0;
-    peerInfo.encrypt = false;
-    esp_now_add_peer(&peerInfo);
-  }
+  addPeer(mac);
 
   esp_now_send(mac, (uint8_t *)buffer, strlen(buffer) + 1);
   triggerActivityIndicator();
