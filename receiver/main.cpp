@@ -98,6 +98,10 @@ void processIncomingPackets() {
     return;
   }
 
+  std::array<uint8_t, 6> mac;
+  memcpy(mac.data(), currentPacket.mac, 6);
+  discoveredDevices[device] = mac;
+
   if (!doc["port"].isNull() && !doc["data"].isNull()) {
     Serial.printf("%s,%s,%d\n", device, (const char*)doc["port"], (int)doc["data"]);
   } else {
