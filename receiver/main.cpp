@@ -23,11 +23,22 @@ const unsigned long DISCOVERY_INTERVAL = 10000; // 10 seconds
 volatile unsigned long ledFlashTime = 0;
 const int FLASH_DURATION = 50;
 
+/**
+ * @brief Toggles the builtin LED to indicate network activity.
+ */
 void triggerActivityIndicator() {
   digitalWrite(LED_BUILTIN, HIGH); // Turn OFF (active low)
   ledFlashTime = millis();
 }
 
+/**
+ * @brief Callback invoked whenever a packet is received via ESP Now. Puts
+ * received packets into a queue.
+ *
+ * @param macAddr MAC address the data came from
+ * @param data The data that was received
+ * @param len The length of the received data in bytes
+ */
 void onReceive(const uint8_t *macAddr, const uint8_t *data, int len) {
   // Create a packet structure to store data and MAC
   Packet p;
@@ -42,6 +53,9 @@ void onReceive(const uint8_t *macAddr, const uint8_t *data, int len) {
   triggerActivityIndicator();
 }
 
+/**
+ * @brief Turns the builtin LED back on if FLASH_DURATION has elapsed.
+ */
 void updateActivityIndicator() {
   if (ledFlashTime > 0 && millis() - ledFlashTime > FLASH_DURATION) {
     digitalWrite(LED_BUILTIN, LOW); // Turn back ON (Ready state)
@@ -49,6 +63,9 @@ void updateActivityIndicator() {
   }
 }
 
+/**
+ * @brief Send a device discovery packet to the broadcast address.
+ */
 void sendDiscovery() {
   JsonDocument doc;
   doc["command"] = "discovery";
@@ -60,6 +77,10 @@ void sendDiscovery() {
   triggerActivityIndicator();
 }
 
+/**
+ * @brief Sends out device discovery packets in periodic intervals determined
+ * by DISCOVERY_INTERVAL.
+ */
 void handleDiscoveryInterval() {
   if (millis() - lastDiscoveryTime > DISCOVERY_INTERVAL) {
     lastDiscoveryTime = millis();
@@ -67,6 +88,12 @@ void handleDiscoveryInterval() {
   }
 }
 
+/**
+ * @brief Adds a new peer with the given MAC address to the peer list of the
+ * ESP Now library.
+ *
+ * @param mac MAC address of the peer
+ */
 void addPeer(const uint8_t *mac) {
   if (!esp_now_is_peer_exist(mac)) {
     esp_now_peer_info_t peerInfo = {};
@@ -77,18 +104,29 @@ void addPeer(const uint8_t *mac) {
   }
 }
 
+/**
+ * @brief Processes a received command package like device discovery requests
+ * and responses.
+ *
+ * @param packet Received data packet
+ * @param doc Parsed JSON data representing the received command
+ */
 void processCommand(const Packet& packet, const JsonDocument& doc) {
   if (doc["command"] == "discoveryResponse") {
+    // Extract device name and MAC address from packet
     const char* device = doc["device"];
     std::array<uint8_t, 6> mac;
     memcpy(mac.data(), packet.mac, 6);
 
+    // Store device name and MAC address in list of discovered devices
     discoveredDevices[device] = mac;
   } else if (doc["command"] == "discovery") {
+    // Build device discovery response packet
     JsonDocument responseDoc;
     responseDoc["device"] = "receiver";
     responseDoc["command"] = "discoveryResponse";
 
+    // Serialise data, add peer and send packet
     char buffer[128];
     serializeJson(responseDoc, buffer);
     addPeer(packet.mac);
@@ -96,6 +134,12 @@ void processCommand(const Packet& packet, const JsonDocument& doc) {
   }
 }
 
+/**
+ * @brief Fetches packets from the packet queue and processes them. Command
+ * packets by running the appropriate code and data packets are parsed and
+ * forwarded through the serial port.
+ * 
+ */
 void processIncomingPackets() {
   Packet currentPacket;
   bool hasPacket = false;
@@ -114,6 +158,7 @@ void processIncomingPackets() {
     return;
   }
 
+  // Deserialise packet data
   JsonDocument doc;
   DeserializationError error = deserializeJson(doc, currentPacket.data);
 
@@ -123,15 +168,20 @@ void processIncomingPackets() {
 
   const char* device = doc["device"];
 
+  // Return if the packet does not contain a device name
   if (!device) {
     return;
   }
 
+  // Packet is a command packet if the key 'command' is set
   if (!doc["command"].isNull()) {
+    // Process the command packet and return
     processCommand(currentPacket, doc);
     return;
   }
 
+  // If the packet data contains the keys 'port' and 'data', extract the values
+  // and print it to the serial connection
   if (!doc["port"].isNull() && !doc["data"].isNull()) {
     Serial.printf("%s,%s,%d\n", device, (const char*)doc["port"], (int)doc["data"]);
   } else {
@@ -150,37 +200,57 @@ void processIncomingPackets() {
   }
 }
 
+/**
+ * @brief Sends a command to an output device through ESP Now. If the device
+ * with the given name is not known, nothing happens.
+ *
+ * @param device Name of the device to send the data to
+ * @param port Port on the device that the data should be sent to
+ * @param command Command to send
+ * @param value Parameters for the command
+ */
 void sendDeviceCommand(const String& device, const String& port, const String& command, int value) {
+  // If the device name is not known, do nothing
+  if (discoveredDevices.count(device) == 0) {
+    return;
+  }
+
+  // Build JSON data
   JsonDocument doc;
   doc["device"] = device;
   doc["port"] = port;
   doc["command"] = command;
   doc["data"] = value;
 
-  if (discoveredDevices.count(device) == 0) {
-    return;
-  }
-
+  // Serialise packet to string
   char buffer[256];
   serializeJson(doc, buffer);
 
+  // Get destination MAC address
   uint8_t* mac = discoveredDevices[device].data();
 
   // Ensure the device is added as a peer
   addPeer(mac);
 
+  // Send packet and trigger builtin LED
   esp_now_send(mac, (uint8_t *)buffer, strlen(buffer) + 1);
   triggerActivityIndicator();
 }
 
+/**
+ * @brief Processes data received through the serial connection.
+ */
 void processSerialInput() {
+  // Return if no data is available
   if (Serial.available() == 0) {
     return;
   }
 
+  // Read until the next newline
   String line = Serial.readStringUntil('\n');
   line.trim();
 
+  // Return if the line is empty
   if (line.length() == 0) {
     return;
   }
@@ -190,12 +260,15 @@ void processSerialInput() {
   int secondComma = line.indexOf(',', firstComma + 1);
   int thirdComma = line.indexOf(',', secondComma + 1);
 
+  // Make sure received data has the right format
   if (firstComma != -1 && secondComma != -1 && thirdComma != -1) {
+    // Extract command parameters
     String device = line.substring(0, firstComma);
     String port = line.substring(firstComma + 1, secondComma);
     String command = line.substring(secondComma + 1, thirdComma);
     int value = line.substring(thirdComma + 1).toInt();
 
+    // Send command to device
     sendDeviceCommand(device, port, command, value);
   }
 }
@@ -215,6 +288,7 @@ void setup() {
   esp_now_peer_info_t peerInfo = {};
   memset(&peerInfo, 0, sizeof(peerInfo));
 
+  // Build broadcast address
   for (int i = 0; i < 6; i++) {
     peerInfo.peer_addr[i] = 0xFF;
   }
