@@ -23,6 +23,11 @@ const unsigned long DISCOVERY_INTERVAL = 10000; // 10 seconds
 volatile unsigned long ledFlashTime = 0;
 const int FLASH_DURATION = 50;
 
+void triggerActivityIndicator() {
+  digitalWrite(LED_BUILTIN, HIGH); // Turn OFF (active low)
+  ledFlashTime = millis();
+}
+
 void onReceive(const uint8_t *macAddr, const uint8_t *data, int len) {
   // Create a packet structure to store data and MAC
   Packet p;
@@ -34,8 +39,137 @@ void onReceive(const uint8_t *macAddr, const uint8_t *data, int len) {
   packetQueue.push_back(p);
 
   // Flash LED for activity
-  digitalWrite(LED_BUILTIN, HIGH); // Turn OFF (active low)
-  ledFlashTime = millis();
+  triggerActivityIndicator();
+}
+
+void updateActivityIndicator() {
+  if (ledFlashTime > 0 && millis() - ledFlashTime > FLASH_DURATION) {
+    digitalWrite(LED_BUILTIN, LOW); // Turn back ON (Ready state)
+    ledFlashTime = 0;
+  }
+}
+
+void sendDiscovery() {
+  JsonDocument doc;
+  doc["command"] = "discovery";
+
+  char buffer[128];
+  serializeJson(doc, buffer);
+  esp_now_send(broadcastAddress, (uint8_t *)buffer, strlen(buffer) + 1);
+
+  triggerActivityIndicator();
+}
+
+void handleDiscoveryInterval() {
+  if (millis() - lastDiscoveryTime > DISCOVERY_INTERVAL) {
+    lastDiscoveryTime = millis();
+    sendDiscovery();
+  }
+}
+
+void processIncomingPackets() {
+  Packet currentPacket;
+  bool hasPacket = false;
+
+  {
+    std::lock_guard<std::mutex> lock(queueMtx);
+
+    if (!packetQueue.empty()) {
+      currentPacket = packetQueue.front();
+      packetQueue.erase(packetQueue.begin());
+      hasPacket = true;
+    }
+  }
+
+  if (!hasPacket) {
+    return;
+  }
+
+  JsonDocument doc;
+  DeserializationError error = deserializeJson(doc, currentPacket.data);
+
+  if (error) {
+    return;
+  }
+
+  const char* device = doc["device"];
+
+  if (!device) {
+    return;
+  }
+
+  if (!doc["port"].isNull() && !doc["data"].isNull()) {
+    Serial.printf("%s,%s,%d\n", device, (const char*)doc["port"], (int)doc["data"]);
+  } else {
+    // Check for RGB keys (touch instrument)
+    if (!doc["r"].isNull()) {
+      Serial.printf("%s,r,%d\n", device, (int)doc["r"]);
+    }
+
+    if (!doc["g"].isNull()) {
+      Serial.printf("%s,g,%d\n", device, (int)doc["g"]);
+    }
+
+    if (!doc["b"].isNull()) {
+      Serial.printf("%s,b,%d\n", device, (int)doc["b"]);
+    }
+  }
+}
+
+void sendDeviceCommand(const String& device, const String& port, const String& command, int value) {
+  JsonDocument doc;
+  doc["device"] = device;
+  doc["port"] = port;
+  doc["command"] = command;
+  doc["data"] = value;
+
+  if (discoveredDevices.count(device) == 0) {
+    return;
+  }
+
+  char buffer[256];
+  serializeJson(doc, buffer);
+
+  uint8_t* mac = discoveredDevices[device].data();
+
+  // Ensure the device is added as a peer
+  if (!esp_now_is_peer_exist(mac)) {
+    esp_now_peer_info_t peerInfo = {};
+    memcpy(peerInfo.peer_addr, mac, 6);
+    peerInfo.channel = 0;
+    peerInfo.encrypt = false;
+    esp_now_add_peer(&peerInfo);
+  }
+
+  esp_now_send(mac, (uint8_t *)buffer, strlen(buffer) + 1);
+  triggerActivityIndicator();
+}
+
+void processSerialInput() {
+  if (Serial.available() == 0) {
+    return;
+  }
+
+  String line = Serial.readStringUntil('\n');
+  line.trim();
+
+  if (line.length() == 0) {
+    return;
+  }
+
+  // Expected format: device,port,command,value
+  int firstComma = line.indexOf(',');
+  int secondComma = line.indexOf(',', firstComma + 1);
+  int thirdComma = line.indexOf(',', secondComma + 1);
+
+  if (firstComma != -1 && secondComma != -1 && thirdComma != -1) {
+    String device = line.substring(0, firstComma);
+    String port = line.substring(firstComma + 1, secondComma);
+    String command = line.substring(secondComma + 1, thirdComma);
+    int value = line.substring(thirdComma + 1).toInt();
+
+    sendDeviceCommand(device, port, command, value);
+  }
 }
 
 void setup() {
@@ -70,126 +204,13 @@ void setup() {
   digitalWrite(LED_BUILTIN, LOW);
 
   // Send initial discovery message
-  JsonDocument discoveryDoc;
-  discoveryDoc["command"] = "discovery";
-  char buffer[128];
-  serializeJson(discoveryDoc, buffer);
-  esp_now_send(broadcastAddress, (uint8_t *)buffer, strlen(buffer) + 1);
+  sendDiscovery();
   lastDiscoveryTime = millis();
 }
 
 void loop() {
-  // Handle LED flash timer
-  if (ledFlashTime > 0 && millis() - ledFlashTime > FLASH_DURATION) {
-    digitalWrite(LED_BUILTIN, LOW); // Turn back ON (Ready state)
-    ledFlashTime = 0;
-  }
-
-  // Handle discovery broadcast
-  if (millis() - lastDiscoveryTime > DISCOVERY_INTERVAL) {
-    lastDiscoveryTime = millis();
-    JsonDocument doc;
-    doc["command"] = "discovery";
-    char buffer[128];
-    serializeJson(doc, buffer);
-    esp_now_send(broadcastAddress, (uint8_t *)buffer, strlen(buffer) + 1);
-
-    // Flash LED for activity
-    digitalWrite(LED_BUILTIN, HIGH); // Turn OFF (active low)
-    ledFlashTime = millis();
-  }
-
-  // Handle ESP Now -> Serial
-  Packet currentPacket;
-  bool hasPacket = false;
-
-  {
-    std::lock_guard<std::mutex> lock(queueMtx);
-
-    if (!packetQueue.empty()) {
-      currentPacket = packetQueue.front();
-      packetQueue.erase(packetQueue.begin());
-      hasPacket = true;
-    }
-  }
-
-  if (hasPacket) {
-    JsonDocument doc;
-    DeserializationError error = deserializeJson(doc, currentPacket.data);
-
-    if (!error) {
-      const char* device = doc["device"];
-
-      if (device) {
-        if (!doc["port"].isNull() && !doc["data"].isNull()) {
-          const char* port = doc["port"];
-          int data = doc["data"];
-
-          Serial.printf("%s,%s,%d\n", device, port, data);
-        } else {
-          // Check for RGB keys (touch instrument)
-          if (!doc["r"].isNull()) {
-            Serial.printf("%s,r,%d\n", device, (int)doc["r"]);
-          }
-
-          if (!doc["g"].isNull()) {
-            Serial.printf("%s,g,%d\n", device, (int)doc["g"]);
-          }
-
-          if (!doc["b"].isNull()) {
-            Serial.printf("%s,b,%d\n", device, (int)doc["b"]);
-          }
-        }
-      }
-    }
-  }
-
-  // Handle Serial -> ESP Now
-  if (Serial.available()) {
-    String line = Serial.readStringUntil('\n');
-    line.trim();
-
-    if (line.length() > 0) {
-      // Expected format: device,port,command,value
-      int firstComma = line.indexOf(',');
-      int secondComma = line.indexOf(',', firstComma + 1);
-      int thirdComma = line.indexOf(',', secondComma + 1);
-
-      if (firstComma != -1 && secondComma != -1 && thirdComma != -1) {
-        String device = line.substring(0, firstComma);
-        String port = line.substring(firstComma + 1, secondComma);
-        String command = line.substring(secondComma + 1, thirdComma);
-        String valueStr = line.substring(thirdComma + 1);
-
-        JsonDocument doc;
-        doc["device"] = device;
-        doc["port"] = port;
-        doc["command"] = command;
-        doc["data"] = valueStr.toInt();
-
-        char buffer[256];
-        serializeJson(doc, buffer);
-
-        // Check if we know the device's MAC address
-        if (discoveredDevices.count(device)) {
-          uint8_t* targetMac = discoveredDevices[device].data();
-
-          // Ensure the device is added as a peer
-          if (!esp_now_is_peer_exist(targetMac)) {
-            esp_now_peer_info_t peerInfo = {};
-            memcpy(peerInfo.peer_addr, targetMac, 6);
-            peerInfo.channel = 0;
-            peerInfo.encrypt = false;
-            esp_now_add_peer(&peerInfo);
-          }
-
-          esp_now_send(targetMac, (uint8_t *)buffer, strlen(buffer) + 1);
-        }
-
-        // Flash LED for activity
-        digitalWrite(LED_BUILTIN, HIGH); // Turn OFF (active low)
-        ledFlashTime = millis();
-      }
-    }
-  }
+  updateActivityIndicator();
+  handleDiscoveryInterval();
+  processIncomingPackets();
+  processSerialInput();
 }
