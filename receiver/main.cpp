@@ -120,10 +120,10 @@ void processCommand(const Packet& packet, const JsonDocument& doc) {
 
     // Store device name and MAC address in list of discovered devices
     discoveredDevices[device] = mac;
-  } else if (doc["command"] == "discovery") {
+  } else if (doc["command"] == "discoverRelay") {
     // Build device discovery response packet
     JsonDocument responseDoc;
-    responseDoc["device"] = "receiver";
+    responseDoc["device"] = "relay";
     responseDoc["command"] = "discoveryResponse";
 
     // Serialise data, add peer and send packet
@@ -138,7 +138,6 @@ void processCommand(const Packet& packet, const JsonDocument& doc) {
  * @brief Fetches packets from the packet queue and processes them. Command
  * packets by running the appropriate code and data packets are parsed and
  * forwarded through the serial port.
- * 
  */
 void processIncomingPackets() {
   Packet currentPacket;
