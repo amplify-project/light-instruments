@@ -118,6 +118,9 @@ void processCommand(const Packet& packet, const JsonDocument& doc) {
     std::array<uint8_t, 6> mac;
     memcpy(mac.data(), packet.mac, 6);
 
+    // Inform the editor that an actuator has been discovered
+    Serial.printf("MSG,actuator,%s\n", device);
+
     // Store device name and MAC address in list of discovered devices
     discoveredDevices[device] = mac;
   } else if (doc["command"] == "discoverRelay") {
@@ -125,6 +128,9 @@ void processCommand(const Packet& packet, const JsonDocument& doc) {
     JsonDocument responseDoc;
     responseDoc["device"] = "relay";
     responseDoc["command"] = "discoveryResponse";
+
+    // Inform the editor that a sensor has discovered the relay
+    Serial.printf("MSG,sensor,%s\n", (const char*)doc["device"]);
 
     // Serialise data, add peer and send packet
     char buffer[128];
@@ -182,19 +188,19 @@ void processIncomingPackets() {
   // If the packet data contains the keys 'port' and 'data', extract the values
   // and print it to the serial connection
   if (!doc["port"].isNull() && !doc["data"].isNull()) {
-    Serial.printf("%s,%s,%d\n", device, (const char*)doc["port"], (int)doc["data"]);
+    Serial.printf("DATA,%s,%s,%d\n", device, (const char*)doc["port"], (int)doc["data"]);
   } else {
     // Check for RGB keys (touch instrument)
     if (!doc["r"].isNull()) {
-      Serial.printf("%s,r,%d\n", device, (int)doc["r"]);
+      Serial.printf("DATA,%s,r,%d\n", device, (int)doc["r"]);
     }
 
     if (!doc["g"].isNull()) {
-      Serial.printf("%s,g,%d\n", device, (int)doc["g"]);
+      Serial.printf("DATA,%s,g,%d\n", device, (int)doc["g"]);
     }
 
     if (!doc["b"].isNull()) {
-      Serial.printf("%s,b,%d\n", device, (int)doc["b"]);
+      Serial.printf("DATA,%s,b,%d\n", device, (int)doc["b"]);
     }
   }
 }
