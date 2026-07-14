@@ -113,30 +113,17 @@ void addPeer(const uint8_t *mac) {
  */
 void processCommand(const Packet& packet, const JsonDocument& doc) {
   if (doc["command"] == "discoveryResponse") {
-    // Extract device name and MAC address from packet
+    // Extract device name, type and MAC address from packet
     const char* device = doc["device"];
+    const char* deviceType = doc["deviceType"];
     std::array<uint8_t, 6> mac;
     memcpy(mac.data(), packet.mac, 6);
 
-    // Inform the editor that an actuator has been discovered
-    Serial.printf("MSG,actuator,%s\n", device);
+    // Inform the editor that a device has been discovered
+    Serial.printf("MSG,%s,%s\n", deviceType, device);
 
     // Store device name and MAC address in list of discovered devices
     discoveredDevices[device] = mac;
-  } else if (doc["command"] == "discoverRelay") {
-    // Build device discovery response packet
-    JsonDocument responseDoc;
-    responseDoc["device"] = "relay";
-    responseDoc["command"] = "discoveryResponse";
-
-    // Inform the editor that a sensor has discovered the relay
-    Serial.printf("MSG,sensor,%s\n", (const char*)doc["device"]);
-
-    // Serialise data, add peer and send packet
-    char buffer[128];
-    serializeJson(responseDoc, buffer);
-    addPeer(packet.mac);
-    esp_now_send(packet.mac, (uint8_t *)buffer, strlen(buffer) + 1);
   }
 }
 
