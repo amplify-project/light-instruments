@@ -2,12 +2,39 @@
 #include <WiFi.h>
 #include <ArduinoJson.h>
 
-uint8_t broadcastAddress[] = {0x2C, 0xF4, 0x32, 0x4E, 0xB2, 0xBE};
+uint8_t relayAddress[6];
+bool relayFound = false;
 esp_now_peer_info_t peerInfo;
 String deviceName = "rattle";
 
 const int port = D3;
 int lastState = 0;
+
+void onDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
+  JsonDocument doc;
+  DeserializationError error = deserializeJson(doc, incomingData, len);
+
+  if (!error) {
+    if (doc["command"] == "discovery") {
+      if (!relayFound) {
+        memcpy(relayAddress, mac, 6);
+        relayFound = true;
+      }
+    }
+  }
+}
+
+void sendResponse() {
+  JsonDocument doc;
+  doc["command"] = "discoveryResponse";
+  doc["deviceType"] = "sensor";
+  doc["device"] = deviceName;
+
+  char buffer[128];
+  serializeJson(doc, buffer);
+
+  esp_now_send(relayAddress, (uint8_t *) buffer, strlen(buffer) + 1);
+}
 
 void sendEvent() {
   JsonDocument doc;
@@ -18,7 +45,7 @@ void sendEvent() {
   char buffer[128];
   serializeJson(doc, buffer);
 
-  esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) buffer, strlen(buffer) + 1);
+  esp_err_t result = esp_now_send(relayAddress, (uint8_t *) buffer, strlen(buffer) + 1);
   Serial.print("Sent: ");
   Serial.println(buffer);
 
@@ -39,8 +66,17 @@ void setup() {
     return;
   }
 
+  esp_now_register_recv_cb(onDataRecv);
+
+  Serial.println("Waiting for relay discovery...");
+  while (!relayFound) {
+    delay(10);
+  }
+  Serial.println("Relay discovered!");
+
   // Register Peer
-  memcpy(peerInfo.peer_addr, broadcastAddress, 6);
+  memset(&peerInfo, 0, sizeof(peerInfo));
+  memcpy(peerInfo.peer_addr, relayAddress, 6);
   peerInfo.channel = 0;
   peerInfo.encrypt = false;
 
@@ -49,8 +85,9 @@ void setup() {
     return;
   }
 
-  pinMode(LED_BUILTIN, OUTPUT);
-  digitalWrite(LED_BUILTIN, LOW);
+  sendResponse();
+
+  digitalWrite(LED_BUILTIN, LOW); // Turn on LED (active-low)
 }
 
 void loop() {
