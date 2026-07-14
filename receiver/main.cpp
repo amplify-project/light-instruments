@@ -26,7 +26,6 @@ const unsigned long PING_INTERVAL = 10000;
 volatile unsigned long ledFlashTime = 0;
 const int FLASH_DURATION = 50;
 
-
 /**
  * @brief Toggles the builtin LED to indicate network activity.
  */
@@ -154,10 +153,16 @@ void processCommand(const Packet& packet, const JsonDocument& doc) {
     memcpy(mac.data(), packet.mac, 6);
 
     // Inform the editor that a device has been discovered
-    Serial.printf("MSG,%s,%s\n", deviceType, device);
+    Serial.printf("MSG,discovery,%s,%s\n", deviceType, device);
 
     // Store device name and MAC address in list of discovered devices
     discoveredDevices[device] = mac;
+  } else if (doc["command"] == "pong") {
+    const char* device = doc["device"];
+    const char* deviceType = doc["deviceType"];
+
+    // Inform the editor that a device has responded to a ping
+    Serial.printf("MSG,pong,%s,%s\n", deviceType, device);
   }
 }
 
