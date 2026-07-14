@@ -27,6 +27,24 @@ volatile unsigned long ledFlashTime = 0;
 const int FLASH_DURATION = 50;
 
 /**
+ * @brief Adds a new peer with the given MAC address to the peer list of the
+ * ESP Now library.
+ *
+ * @param mac MAC address of the peer
+ */
+void addPeer(const uint8_t *mac) {
+  if (!esp_now_is_peer_exist(mac)) {
+    esp_now_peer_info_t peerInfo = {};
+    memcpy(peerInfo.peer_addr, mac, 6);
+
+    peerInfo.channel = 0;
+    peerInfo.encrypt = false;
+
+    esp_now_add_peer(&peerInfo);
+  }
+}
+
+/**
  * @brief Toggles the builtin LED to indicate network activity.
  */
 void triggerActivityIndicator() {
@@ -93,6 +111,8 @@ void handleDiscoveryInterval() {
 
 /**
  * @brief Send a ping packet to the given address.
+ *
+ * @param destination MAC address of the target device
  */
 void sendPing(const uint8_t* destination) {
   JsonDocument doc;
@@ -100,6 +120,9 @@ void sendPing(const uint8_t* destination) {
 
   char buffer[128];
   serializeJson(doc, buffer);
+
+  // Ensure the device is added as a peer
+  addPeer(destination);
   esp_now_send(destination, (uint8_t *)buffer, strlen(buffer) + 1);
 
   triggerActivityIndicator();
@@ -116,24 +139,6 @@ void handlePingInterval() {
     for (auto const& device : discoveredDevices) {
       sendPing(device.second.data());
     }
-  }
-}
-
-/**
- * @brief Adds a new peer with the given MAC address to the peer list of the
- * ESP Now library.
- *
- * @param mac MAC address of the peer
- */
-void addPeer(const uint8_t *mac) {
-  if (!esp_now_is_peer_exist(mac)) {
-    esp_now_peer_info_t peerInfo = {};
-    memcpy(peerInfo.peer_addr, mac, 6);
-
-    peerInfo.channel = 0;
-    peerInfo.encrypt = false;
-
-    esp_now_add_peer(&peerInfo);
   }
 }
 
@@ -339,12 +344,14 @@ void setup() {
   // Send initial discovery message
   sendDiscovery();
   lastDiscoveryTime = millis();
+
+  lastPingTime = millis();
 }
 
 void loop() {
   updateActivityIndicator();
   handleDiscoveryInterval();
-  handlePingInterval();
   processIncomingPackets();
   processSerialInput();
+  handlePingInterval();
 }
