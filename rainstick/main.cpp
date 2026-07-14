@@ -30,6 +30,19 @@ void onDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   }
 }
 
+void sendPong() {
+  JsonDocument doc;
+  doc["command"] = "pong";
+  doc["deviceType"] = "sensor";
+  doc["device"] = deviceName;
+
+  char buffer[128];
+  serializeJson(doc, buffer);
+
+  pingReceived = false;
+  esp_now_send(relayAddress, (uint8_t *) buffer, strlen(buffer) + 1);
+}
+
 void sendDiscoveryResponse() {
   JsonDocument doc;
   doc["command"] = "discoveryResponse";
@@ -103,6 +116,11 @@ void setup() {
 }
 
 void loop() {
+  if (pingReceived) {
+    Serial.println("Processing ping...");
+    sendPong();
+  }
+
   int currentValue = analogRead(PHOTODIODE_PIN);
 
   // Only send if the value has changed significantly
