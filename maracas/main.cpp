@@ -5,7 +5,9 @@
 uint8_t relayAddress[6];
 bool relayFound = false;
 esp_now_peer_info_t peerInfo;
-String deviceName = "rattle";
+String deviceName = "maracas1";
+
+bool pingReceived = false;
 
 const int port = D3;
 int lastState = 0;
@@ -20,11 +22,13 @@ void onDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
         memcpy(relayAddress, mac, 6);
         relayFound = true;
       }
+    } else if (doc["command"] == "ping") {
+      pingReceived = true;
     }
   }
 }
 
-void sendResponse() {
+void sendDiscoveryResponse() {
   JsonDocument doc;
   doc["command"] = "discoveryResponse";
   doc["deviceType"] = "sensor";
@@ -33,6 +37,19 @@ void sendResponse() {
   char buffer[128];
   serializeJson(doc, buffer);
 
+  esp_now_send(relayAddress, (uint8_t *) buffer, strlen(buffer) + 1);
+}
+
+void sendPong() {
+  JsonDocument doc;
+  doc["command"] = "pong";
+  doc["deviceType"] = "sensor";
+  doc["device"] = deviceName;
+
+  char buffer[128];
+  serializeJson(doc, buffer);
+
+  pingReceived = false;
   esp_now_send(relayAddress, (uint8_t *) buffer, strlen(buffer) + 1);
 }
 
@@ -94,12 +111,17 @@ void setup() {
     return;
   }
 
-  sendResponse();
+  sendDiscoveryResponse();
 
   digitalWrite(LED_BUILTIN, LOW); // Turn on LED (active-low)
 }
 
 void loop() {
+  if (pingReceived) {
+    Serial.println("Processing ping...");
+    sendPong();
+  }
+
   int currentState = digitalRead(port);
 
   // Check for state change
