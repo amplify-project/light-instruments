@@ -220,19 +220,6 @@ void processIncomingPackets() {
   // and print it to the serial connection
   if (!doc["port"].isNull() && !doc["data"].isNull()) {
     Serial.printf("DATA,%s,%s,%d\n", device, (const char*)doc["port"], (int)doc["data"]);
-  } else {
-    // Check for RGB keys (touch instrument)
-    if (!doc["r"].isNull()) {
-      Serial.printf("DATA,%s,r,%d\n", device, (int)doc["r"]);
-    }
-
-    if (!doc["g"].isNull()) {
-      Serial.printf("DATA,%s,g,%d\n", device, (int)doc["g"]);
-    }
-
-    if (!doc["b"].isNull()) {
-      Serial.printf("DATA,%s,b,%d\n", device, (int)doc["b"]);
-    }
   }
 }
 
