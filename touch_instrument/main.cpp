@@ -27,19 +27,17 @@ int processValue(int i, uint32_t val) {
   return map(adjustedVal, 0, 50000, 0, 4096);
 }
 
-void sendJsonData(int r, int g, int b) {
+void sendJsonData(String port, int value) {
   JsonDocument doc;
 
   doc["device"] = deviceName;
-  doc["r"] = r;
-  doc["g"] = g;
-  doc["b"] = b;
+  doc["port"] = port;
+  doc["data"] = value;
 
   char buffer[128];
   serializeJson(doc, buffer);
 
   esp_now_send(broadcastAddress, (uint8_t *) buffer, strlen(buffer) + 1);
-  Serial.printf("r: %04d g: %04d b: %04d\n", r, g, b);
 }
 
 void setup() {
@@ -98,7 +96,9 @@ void loop() {
     int newB = processValue(2, b);
 
     if (newR + newG + newB > 0) {
-      sendJsonData(newR, newG, newB);
+      sendJsonData("r", newR);
+      sendJsonData("g", newG);
+      sendJsonData("b", newB);
     }
   }
 
