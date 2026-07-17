@@ -2,9 +2,12 @@
 #include <WiFi.h>
 #include <ArduinoJson.h>
 
-uint8_t broadcastAddress[] = {0x2C, 0xF4, 0x32, 0x4E, 0xB2, 0xBE};
+uint8_t relayAddress[6];
+bool relayFound = false;
 esp_now_peer_info_t peerInfo;
 String deviceName = "touch";
+
+bool pingReceived = false;
 
 const int touchPins[] = {D1, D2, D3};
 const int sensitivityThreshold = 50; // Minimum change to trigger a send
@@ -12,6 +15,47 @@ uint32_t touchMinima[] = {39000, 45100, 46100};
 
 // State tracking
 uint32_t lastValues[] = {0, 0, 0};
+
+void onDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
+  JsonDocument doc;
+  DeserializationError error = deserializeJson(doc, incomingData, len);
+
+  if (!error) {
+    if (doc["command"] == "discovery") {
+      if (!relayFound) {
+        memcpy(relayAddress, mac, 6);
+        relayFound = true;
+      }
+    } else if (doc["command"] == "ping") {
+      pingReceived = true;
+    }
+  }
+}
+
+void sendDiscoveryResponse() {
+  JsonDocument doc;
+  doc["command"] = "discoveryResponse";
+  doc["deviceType"] = "sensor";
+  doc["device"] = deviceName;
+
+  char buffer[128];
+  serializeJson(doc, buffer);
+
+  esp_now_send(relayAddress, (uint8_t *) buffer, strlen(buffer) + 1);
+}
+
+void sendPong() {
+  JsonDocument doc;
+  doc["command"] = "pong";
+  doc["deviceType"] = "sensor";
+  doc["device"] = deviceName;
+
+  char buffer[128];
+  serializeJson(doc, buffer);
+
+  pingReceived = false;
+  esp_now_send(relayAddress, (uint8_t *) buffer, strlen(buffer) + 1);
+}
 
 int processValue(int i, uint32_t val) {
   int adjustedVal = val - touchMinima[i];
@@ -27,7 +71,7 @@ int processValue(int i, uint32_t val) {
   return map(adjustedVal, 0, 50000, 0, 4096);
 }
 
-void sendJsonData(String port, int value) {
+void sendEvent(String port, int value) {
   JsonDocument doc;
 
   doc["device"] = deviceName;
@@ -37,16 +81,21 @@ void sendJsonData(String port, int value) {
   char buffer[128];
   serializeJson(doc, buffer);
 
-  esp_now_send(broadcastAddress, (uint8_t *) buffer, strlen(buffer) + 1);
+  esp_now_send(relayAddress, (uint8_t *) buffer, strlen(buffer) + 1);
 }
 
 void setup() {
   Serial.begin(115200);
 
-  for (int i=0; i<3; i++) {
-    uint32_t baseline = touchRead(touchPins[i]);
-    touchMinima[i] = baseline;
-  }
+  pinMode(LED_BUILTIN, OUTPUT);
+
+  digitalWrite(LED_BUILTIN, LOW);
+  delay(100);
+  digitalWrite(LED_BUILTIN, HIGH);
+  delay(100);
+  digitalWrite(LED_BUILTIN, LOW);
+  delay(100);
+  digitalWrite(LED_BUILTIN, HIGH);
 
   WiFi.mode(WIFI_STA);
   if (esp_now_init() != ESP_OK) {
@@ -54,8 +103,17 @@ void setup() {
     return;
   }
 
-  // Register the peer
-  memcpy(peerInfo.peer_addr, broadcastAddress, 6);
+  esp_now_register_recv_cb(onDataRecv);
+
+  Serial.println("Waiting for relay discovery...");
+  while (!relayFound) {
+    delay(10);
+  }
+  Serial.println("Relay discovered!");
+
+  // Register Peer
+  memset(&peerInfo, 0, sizeof(peerInfo));
+  memcpy(peerInfo.peer_addr, relayAddress, 6);
   peerInfo.channel = 0;
   peerInfo.encrypt = false;
 
@@ -64,12 +122,24 @@ void setup() {
     return;
   }
 
+  sendDiscoveryResponse();
+
+  // Establish touch minima
+  for (int i=0; i<3; i++) {
+    uint32_t baseline = touchRead(touchPins[i]);
+    touchMinima[i] = baseline;
+  }
+
   Serial.println("XIAO ESP32-S3 Touch Sender Ready");
-  pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, LOW);
 }
 
 void loop() {
+  if (pingReceived) {
+    Serial.println("Processing ping...");
+    sendPong();
+  }
+
   bool sendData = false;
 
   uint32_t r = touchRead(touchPins[0]);
@@ -96,9 +166,9 @@ void loop() {
     int newB = processValue(2, b);
 
     if (newR + newG + newB > 0) {
-      sendJsonData("r", newR);
-      sendJsonData("g", newG);
-      sendJsonData("b", newB);
+      sendEvent("r", newR);
+      sendEvent("g", newG);
+      sendEvent("b", newB);
     }
   }
 
