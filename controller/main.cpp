@@ -2,6 +2,12 @@
 #include <esp_now.h>
 #include <WiFi.h>
 #include <ArduinoJson.h>
+#include <FastLED.h>
+
+#define NUM_LEDS_D0 30
+#define DATA_PIN_D0 D0
+
+CRGB ledsD0[NUM_LEDS_D0];
 
 uint8_t relayAddress[6];
 bool relayFound = false;
@@ -65,6 +71,11 @@ void setup() {
   digitalWrite(LED_BUILTIN, LOW);
   delay(100);
   digitalWrite(LED_BUILTIN, HIGH);
+
+  FastLED.addLeds<WS2812B, DATA_PIN_D0, GRB>(ledsD0, NUM_LEDS_D0);
+  FastLED.setBrightness(50);
+  FastLED.clear();
+  FastLED.show();
 
   WiFi.mode(WIFI_STA);
   if (esp_now_init() != ESP_OK) {
