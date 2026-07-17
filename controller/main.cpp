@@ -102,6 +102,15 @@ void processLightCommand(const JsonDocument& doc) {
           }
         }
       }
+    } else if (doc["command"] == "setBrightness") {
+      const char* value = doc["value"];
+
+      if (value) {
+        if (port == nullptr || strcmp(port, "D0") == 0) {
+          FastLED.setBrightness(atoi(value));
+          FastLED.show();
+        }
+      }
     }
 }
 
