@@ -1,3 +1,6 @@
+#include <deque>
+#include <mutex>
+
 #include <Arduino.h>
 #include <esp_now.h>
 #include <WiFi.h>
@@ -6,6 +9,11 @@
 
 #define NUM_LEDS_D0 30
 #define DATA_PIN_D0 D0
+
+struct Packet {
+  uint8_t mac[6];
+  JsonDocument doc;
+};
 
 CRGB ledsD0[NUM_LEDS_D0];
 
@@ -17,6 +25,10 @@ String deviceName = "receiver1";
 String deviceType = "actuator";
 
 bool pingReceived = false;
+
+std::deque<Packet> packetQueue;
+const size_t MAX_QUEUE_SIZE = 20;
+std::mutex queueMtx;
 
 void onDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
   JsonDocument doc;
@@ -30,6 +42,20 @@ void onDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
       }
     } else if (doc["command"] == "ping") {
       pingReceived = true;
+    } else {
+      // Protect the queue with a mutex since this callback runs in a different task context
+      std::lock_guard<std::mutex> lock(queueMtx);
+
+      if (packetQueue.size() < MAX_QUEUE_SIZE) {
+        // Create a packet structure to store data and MAC
+        Packet p;
+        memcpy(p.mac, mac, 6);
+        p.doc = std::move(doc); // Use move to avoid copying the JsonDocument
+
+        packetQueue.push_back(std::move(p));
+      } else {
+        Serial.println("Packet queue full, dropping packet");
+      }
     }
   }
 }
@@ -56,7 +82,51 @@ void sendPong() {
   serializeJson(doc, buffer);
 
   pingReceived = false;
-  esp_now_send(relayAddress, (uint8_t *) buffer, strlen(buffer) + 1);
+  esp_now_send(relayAddress, (uint8_t *)buffer, strlen(buffer) + 1);
+}
+
+void processLightCommand(const JsonDocument& doc) {
+    const char* port = doc["port"];
+
+    if (doc["command"] == "setColor") {
+      const char* value = doc["value"];
+
+      if (value) {
+        // If no port is specified, default to D0, or check if it matches D0
+        if (port == nullptr || strcmp(port, "D0") == 0) {
+          int r, g, b;
+
+          if (sscanf(value, "%d,%d,%d", &r, &g, &b) == 3) {
+            fill_solid(ledsD0, NUM_LEDS_D0, CRGB(r, g, b));
+            FastLED.show();
+          }
+        }
+      }
+    }
+}
+
+void processIncomingPackets() {
+  Packet currentPacket;
+  bool hasPacket = false;
+
+  {
+    std::lock_guard<std::mutex> lock(queueMtx);
+
+    if (!packetQueue.empty()) {
+      currentPacket = std::move(packetQueue.front()); // Move out of the queue
+      packetQueue.pop_front(); // Efficient removal from deque
+      hasPacket = true;
+    }
+  }
+
+  if (!hasPacket) {
+    return;
+  }
+
+  // Packet is a command packet if the key 'command' is set
+  if (!currentPacket.doc["command"].isNull()) {
+    processLightCommand(currentPacket.doc);
+  }
 }
 
 void setup() {
@@ -110,4 +180,6 @@ void loop() {
   if (pingReceived) {
     sendPong();
   }
+
+  processIncomingPackets();
 }
