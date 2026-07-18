@@ -232,7 +232,7 @@ void processIncomingPackets() {
  * @param command Command to send
  * @param value Parameters for the command
  */
-void sendDeviceCommand(const String& device, const String& port, const String& command, int value) {
+void sendDeviceCommand(const String& device, const String& port, const String& command, const String& value) {
   // If the device name is not known, do nothing
   if (discoveredDevices.count(device) == 0) {
     return;
@@ -289,7 +289,7 @@ void processSerialInput() {
     String device = line.substring(0, firstComma);
     String port = line.substring(firstComma + 1, secondComma);
     String command = line.substring(secondComma + 1, thirdComma);
-    int value = line.substring(thirdComma + 1).toInt();
+    String value = line.substring(thirdComma + 1);
 
     // Send command to device
     sendDeviceCommand(device, port, command, value);
