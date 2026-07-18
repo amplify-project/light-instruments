@@ -14,7 +14,7 @@ const int threshold = 5; // Ignore minor voltage jitter
 
 // State tracking
 float smoothedValue = 0;
-const float alpha = 0.15; // Smoothing factor (0.0 to 1.0). Lower = more smoothing, slower response.
+const float alpha = 0.6; // Smoothing factor (0.0 to 1.0). Lower = more smoothing, slower response.
 int lastValue = -1;
 
 void onDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
