@@ -3,7 +3,7 @@
 #include <Arduino.h>
 
 void SetColorCommand::execute(const JsonDocument& doc) {
-    const char* value = doc["value"];
+    const char* value = doc["data"];
 
     if (value && isTargetPort(doc, "D0")) {
         int r, g, b;
@@ -16,7 +16,7 @@ void SetColorCommand::execute(const JsonDocument& doc) {
 }
 
 void PulseCommand::execute(const JsonDocument& doc) {
-    const char* value = doc["value"];
+    const char* value = doc["data"];
 
     if (value && isTargetPort(doc, "D0")) {
         int r, g, b, a, d, s, re;
@@ -59,7 +59,7 @@ void PulseCommand::update() {
 }
 
 void SetBrightnessCommand::execute(const JsonDocument& doc) {
-    const char* value = doc["value"];
+    const char* value = doc["data"];
 
     if (value && isTargetPort(doc, "D0")) {
         FastLED.setBrightness(atoi(value));
