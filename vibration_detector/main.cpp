@@ -10,6 +10,8 @@ const int analogPin = A1;
 const int threshold = 5; // Ignore minor voltage jitter
 
 // State tracking
+float smoothedValue = 0;
+const float alpha = 0.15; // Smoothing factor (0.0 to 1.0). Lower = more smoothing, slower response.
 int lastValue = -1;
 
 void sendJsonData(int val) {
@@ -51,10 +53,18 @@ void setup() {
   Serial.println("XIAO ESP32-S3 vibration detector ready");
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, LOW);
+
+  // Initialize smoothed value with current reading
+  smoothedValue = analogRead(analogPin);
 }
 
 void loop() {
-  int currentValue = analogRead(analogPin);
+  int rawValue = analogRead(analogPin);
+
+  // Apply Exponential Moving Average (EMA) smoothing
+  smoothedValue = (alpha * rawValue) + ((1.0 - alpha) * smoothedValue);
+  int currentValue = (int)(smoothedValue + 0.5); // Round to nearest int
+  currentValue = constrain(currentValue, 0, 1023); // Clamp value between 0 and 1023
 
   // Only send if the value has changed significantly
   if (abs(currentValue - lastValue) > threshold) {
