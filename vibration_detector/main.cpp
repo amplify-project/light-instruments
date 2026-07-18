@@ -2,9 +2,12 @@
 #include <WiFi.h>
 #include <ArduinoJson.h>
 
-uint8_t broadcastAddress[] = {0x2C, 0xF4, 0x32, 0x4E, 0xB2, 0xBE};
+uint8_t relayAddress[6];
+bool relayFound = false;
 esp_now_peer_info_t peerInfo;
 String deviceName = "percussion_small";
+
+bool pingReceived = false;
 
 const int analogPin = A1;
 const int threshold = 5; // Ignore minor voltage jitter
@@ -14,7 +17,48 @@ float smoothedValue = 0;
 const float alpha = 0.15; // Smoothing factor (0.0 to 1.0). Lower = more smoothing, slower response.
 int lastValue = -1;
 
-void sendJsonData(int val) {
+void onDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
+  JsonDocument doc;
+  DeserializationError error = deserializeJson(doc, incomingData, len);
+
+  if (!error) {
+    if (doc["command"] == "discovery") {
+      if (!relayFound) {
+        memcpy(relayAddress, mac, 6);
+        relayFound = true;
+      }
+    } else if (doc["command"] == "ping") {
+      pingReceived = true;
+    }
+  }
+}
+
+void sendDiscoveryResponse() {
+  JsonDocument doc;
+  doc["command"] = "discoveryResponse";
+  doc["deviceType"] = "sensor";
+  doc["device"] = deviceName;
+
+  char buffer[128];
+  serializeJson(doc, buffer);
+
+  esp_now_send(relayAddress, (uint8_t *) buffer, strlen(buffer) + 1);
+}
+
+void sendPong() {
+  JsonDocument doc;
+  doc["command"] = "pong";
+  doc["deviceType"] = "sensor";
+  doc["device"] = deviceName;
+
+  char buffer[128];
+  serializeJson(doc, buffer);
+
+  pingReceived = false;
+  esp_now_send(relayAddress, (uint8_t *) buffer, strlen(buffer) + 1);
+}
+
+void sendEvent(int val) {
   JsonDocument doc;
   doc["device"] = deviceName;
   doc["port"] = "A1";
@@ -22,7 +66,7 @@ void sendJsonData(int val) {
 
   char buffer[128];
   serializeJson(doc, buffer);
-  esp_now_send(broadcastAddress, (uint8_t *)buffer, strlen(buffer) + 1);
+  esp_now_send(relayAddress, (uint8_t *)buffer, strlen(buffer) + 1);
 
   Serial.printf("Value: %d\n", val);
 }
@@ -30,18 +74,37 @@ void sendJsonData(int val) {
 void setup() {
   Serial.begin(115200);
 
+  pinMode(LED_BUILTIN, OUTPUT);
+
+  digitalWrite(LED_BUILTIN, LOW);
+  delay(100);
+  digitalWrite(LED_BUILTIN, HIGH);
+  delay(100);
+  digitalWrite(LED_BUILTIN, LOW);
+  delay(100);
+  digitalWrite(LED_BUILTIN, HIGH);
+
   pinMode(A1, INPUT);
   analogReadResolution(12);
 
+  // Initialise ESP-NOW
   WiFi.mode(WIFI_STA);
-  WiFi.disconnect();
-
   if (esp_now_init() != ESP_OK) {
     Serial.println("Error initializing ESP-NOW");
     return;
   }
 
-  memcpy(peerInfo.peer_addr, broadcastAddress, 6);
+  esp_now_register_recv_cb(onDataRecv);
+
+  Serial.println("Waiting for relay discovery...");
+  while (!relayFound) {
+    delay(10);
+  }
+  Serial.println("Relay discovered!");
+
+  // Register Peer
+  memset(&peerInfo, 0, sizeof(peerInfo));
+  memcpy(peerInfo.peer_addr, relayAddress, 6);
   peerInfo.channel = 0;
   peerInfo.encrypt = false;
 
@@ -50,12 +113,14 @@ void setup() {
     return;
   }
 
-  Serial.println("XIAO ESP32-S3 vibration detector ready");
-  pinMode(LED_BUILTIN, OUTPUT);
-  digitalWrite(LED_BUILTIN, LOW);
+  sendDiscoveryResponse();
 
   // Initialize smoothed value with current reading
   smoothedValue = analogRead(analogPin);
+
+  Serial.println("XIAO ESP32-S3 vibration detector ready");
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, LOW);
 }
 
 void loop() {
@@ -68,7 +133,7 @@ void loop() {
 
   // Only send if the value has changed significantly
   if (abs(currentValue - lastValue) > threshold) {
-    sendJsonData(currentValue);
+    sendEvent(currentValue);
     lastValue = currentValue;
   }
 
