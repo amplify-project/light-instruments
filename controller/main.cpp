@@ -1,5 +1,6 @@
 #include <deque>
 #include <mutex>
+#include <memory>
 
 #include <Arduino.h>
 #include <esp_now.h>
@@ -7,14 +8,16 @@
 #include <ArduinoJson.h>
 #include <FastLED.h>
 
-#define NUM_LEDS_D0 30
-#define DATA_PIN_D0 D0
+#include "Globals.h"
+#include "Commands.h"
+#include "CommandManager.h"
 
 struct Packet {
   uint8_t mac[6];
   JsonDocument doc;
 };
 
+// Definitions of globals declared in Globals.h
 CRGB ledsD0[NUM_LEDS_D0];
 
 uint8_t relayAddress[6];
@@ -30,18 +33,7 @@ std::deque<Packet> packetQueue;
 const size_t MAX_QUEUE_SIZE = 20;
 std::mutex queueMtx;
 
-struct AnimationState {
-    bool active = false;
-    uint32_t startTime = 0;
-    uint16_t attack = 0;  // ms
-    uint16_t decay = 0;   // ms
-    uint16_t sustain = 0; // ms
-    uint16_t release = 0; // ms
-    uint8_t targetBrightness = 255;
-    CRGB color = CRGB::White;
-};
-
-AnimationState pulseAnim;
+CommandManager commandManager;
 
 void onDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
   JsonDocument doc;
@@ -98,49 +90,6 @@ void sendPong() {
   esp_now_send(relayAddress, (uint8_t *)buffer, strlen(buffer) + 1);
 }
 
-void processLightCommand(const JsonDocument& doc) {
-    const char* port = doc["port"];
-
-    if (doc["command"] == "setColor") {
-      const char* value = doc["value"];
-
-      if (value) {
-        // If no port is specified, default to D0, or check if it matches D0
-        if (port == nullptr || strcmp(port, "D0") == 0) {
-          int r, g, b;
-
-          if (sscanf(value, "%d,%d,%d", &r, &g, &b) == 3) {
-            fill_solid(ledsD0, NUM_LEDS_D0, CRGB(r, g, b));
-            FastLED.show();
-          }
-        }
-      }
-    } else if (doc["command"] == "pulse") {
-      const char* value = doc["value"];
-      if (value && (port == nullptr || strcmp(port, "D0") == 0)) {
-        int r, g, b, a, d, s, re;
-        if (sscanf(value, "%d,%d,%d,%d,%d,%d,%d", &r, &g, &b, &a, &d, &s, &re) == 7) {
-          pulseAnim.color = CRGB(r, g, b);
-          pulseAnim.attack = a;
-          pulseAnim.decay = d;
-          pulseAnim.sustain = s;
-          pulseAnim.release = re;
-          pulseAnim.startTime = millis();
-          pulseAnim.active = true;
-        }
-      }
-    } else if (doc["command"] == "setBrightness") {
-      const char* value = doc["value"];
-
-      if (value) {
-        if (port == nullptr || strcmp(port, "D0") == 0) {
-          FastLED.setBrightness(atoi(value));
-          FastLED.show();
-        }
-      }
-    }
-}
-
 void processIncomingPackets() {
   Packet currentPacket;
   bool hasPacket = false;
@@ -161,7 +110,7 @@ void processIncomingPackets() {
 
   // Packet is a command packet if the key 'command' is set
   if (!currentPacket.doc["command"].isNull()) {
-    processLightCommand(currentPacket.doc);
+    commandManager.process(currentPacket.doc);
   }
 }
 
@@ -182,6 +131,10 @@ void setup() {
   FastLED.setBrightness(50);
   FastLED.clear();
   FastLED.show();
+
+  commandManager.registerCommand("setColor", std::unique_ptr<LightCommand>(new SetColorCommand()));
+  commandManager.registerCommand("pulse", std::unique_ptr<LightCommand>(new PulseCommand()));
+  commandManager.registerCommand("setBrightness", std::unique_ptr<LightCommand>(new SetBrightnessCommand()));
 
   WiFi.mode(WIFI_STA);
   if (esp_now_init() != ESP_OK) {
@@ -212,43 +165,11 @@ void setup() {
   digitalWrite(LED_BUILTIN, LOW);
 }
 
-void updateAnimations() {
-  if (!pulseAnim.active) return;
-
-  uint32_t now = millis();
-  uint32_t elapsed = now - pulseAnim.startTime;
-  uint8_t brightness = 0;
-
-  if (elapsed < pulseAnim.attack) {
-    // Attack phase: linear ramp up
-    brightness = map(elapsed, 0, pulseAnim.attack, 0, 255);
-  } else if (elapsed < pulseAnim.attack + pulseAnim.decay) {
-    // Decay phase: ramp down to sustain level (using 128 as sustain brightness for now, or we could add it to params)
-    // Actually, usually sustain is a level, but the user asked for "sustain" which in this context often means duration
-    // Let's assume sustain is a duration at peak brightness (255) for simplicity, or 
-    // interpret the 4 params as durations.
-    brightness = map(elapsed - pulseAnim.attack, 0, pulseAnim.decay, 255, 200);
-  } else if (elapsed < pulseAnim.attack + pulseAnim.decay + pulseAnim.sustain) {
-    // Sustain phase: hold
-    brightness = 200;
-  } else if (elapsed < pulseAnim.attack + pulseAnim.decay + pulseAnim.sustain + pulseAnim.release) {
-    // Release phase: ramp down to 0
-    brightness = map(elapsed - (pulseAnim.attack + pulseAnim.decay + pulseAnim.sustain), 0, pulseAnim.release, 200, 0);
-  } else {
-    pulseAnim.active = false;
-    brightness = 0;
-  }
-
-  fill_solid(ledsD0, NUM_LEDS_D0, pulseAnim.color);
-  FastLED.setBrightness(brightness);
-  FastLED.show();
-}
-
 void loop() {
   if (pingReceived) {
     sendPong();
   }
 
   processIncomingPackets();
-  updateAnimations();
+  commandManager.update();
 }
