@@ -67,8 +67,6 @@ void sendEvent(int val) {
   char buffer[128];
   serializeJson(doc, buffer);
   esp_now_send(relayAddress, (uint8_t *)buffer, strlen(buffer) + 1);
-
-  Serial.printf("Value: %d\n", val);
 }
 
 void setup() {
@@ -137,5 +135,6 @@ void loop() {
     lastValue = currentValue;
   }
 
+  Serial.println(currentValue);
   delay(20);
 }
