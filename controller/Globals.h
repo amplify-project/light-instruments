@@ -8,4 +8,13 @@
 
 extern CRGB ledsD0[NUM_LEDS_D0];
 
+struct LedStrip {
+    const char* name;
+    CRGB* leds;
+    int numLeds;
+};
+
+extern LedStrip ledStrips[];
+extern const int numLedStrips;
+
 #endif // GLOBALS_H
