@@ -1,24 +1,42 @@
 #include "Commands.h"
 #include "Globals.h"
 #include <Arduino.h>
+#include <cstring>
 
 void SetColorCommand::execute(const JsonDocument& doc) {
     const char* value = doc["data"];
+    if (!value) return;
 
-    if (value && isTargetPort(doc, "D0")) {
-        int r, g, b;
+    bool updated = false;
+    for (int i = 0; i < numLedStrips; i++) {
+        if (isTargetPort(doc, ledStrips[i].name)) {
+            int r, g, b;
 
-        if (sscanf(value, "%d,%d,%d", &r, &g, &b) == 3) {
-            fill_solid(ledsD0, NUM_LEDS_D0, CRGB(r, g, b));
-            FastLED.show();
+            if (sscanf(value, "%d,%d,%d", &r, &g, &b) == 3) {
+                fill_solid(ledStrips[i].leds, ledStrips[i].numLeds, CRGB(r, g, b));
+                updated = true;
+            }
         }
+    }
+
+    if (updated) {
+        FastLED.show();
     }
 }
 
 void PulseCommand::execute(const JsonDocument& doc) {
     const char* value = doc["data"];
+    const char* port = doc["port"];
 
-    if (value && isTargetPort(doc, "D0")) {
+    bool anyMatch = false;
+    for (int i = 0; i < numLedStrips; i++) {
+        if (isTargetPort(doc, ledStrips[i].name)) {
+            anyMatch = true;
+            break;
+        }
+    }
+
+    if (value && anyMatch) {
         int r, g, b, a, d, s, re;
 
         if (sscanf(value, "%d,%d,%d,%d,%d,%d,%d", &r, &g, &b, &a, &d, &s, &re) == 7) {
@@ -28,6 +46,14 @@ void PulseCommand::execute(const JsonDocument& doc) {
             pulseAnim.sustain = s;
             pulseAnim.release = re;
             pulseAnim.startTime = millis();
+
+            if (port) {
+                strncpy(pulseAnim.targetPort, port, sizeof(pulseAnim.targetPort) - 1);
+                pulseAnim.targetPort[sizeof(pulseAnim.targetPort) - 1] = '\0';
+            } else {
+                pulseAnim.targetPort[0] = '\0';
+            }
+
             pulseAnim.active = true;
         }
     }
@@ -53,15 +79,31 @@ void PulseCommand::update() {
         brightness = 0;
     }
 
-    fill_solid(ledsD0, NUM_LEDS_D0, pulseAnim.color);
+    for (int i = 0; i < numLedStrips; i++) {
+        bool matches = (pulseAnim.targetPort[0] == '\0' || strcmp(ledStrips[i].name, pulseAnim.targetPort) == 0);
+
+        if (matches) {
+            fill_solid(ledStrips[i].leds, ledStrips[i].numLeds, pulseAnim.color);
+        }
+    }
+
     FastLED.setBrightness(brightness);
     FastLED.show();
 }
 
 void SetBrightnessCommand::execute(const JsonDocument& doc) {
     const char* value = doc["data"];
+    if (!value) return;
 
-    if (value && isTargetPort(doc, "D0")) {
+    bool targetMatches = false;
+    for (int i = 0; i < numLedStrips; i++) {
+        if (isTargetPort(doc, ledStrips[i].name)) {
+            targetMatches = true;
+            break;
+        }
+    }
+
+    if (targetMatches) {
         FastLED.setBrightness(atoi(value));
         FastLED.show();
     }
