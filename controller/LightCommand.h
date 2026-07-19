@@ -2,6 +2,7 @@
 #define LIGHT_COMMAND_H
 
 #include <ArduinoJson.h>
+#include <FastLED.h>
 
 class LightCommand {
 public:
