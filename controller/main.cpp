@@ -119,7 +119,7 @@ void processIncomingPackets() {
     const char* port = currentPacket.doc["port"];
     const char* data = currentPacket.doc["data"];
 
-    Serial.printf("%s %s %s\n", command, port);
+    Serial.printf("%s %s %s\n", command, port, data);
 
     commandManager.process(currentPacket.doc);
   }
@@ -143,6 +143,7 @@ void setup() {
   FastLED.clear();
   FastLED.show();
 
+  commandManager.registerCommand("set", std::unique_ptr<SetCommand>(new SetCommand()));
   commandManager.registerCommand("setColor", std::unique_ptr<LightCommand>(new SetColorCommand()));
   commandManager.registerCommand("pulse", std::unique_ptr<LightCommand>(new PulseCommand()));
   commandManager.registerCommand("setBrightness", std::unique_ptr<LightCommand>(new SetBrightnessCommand()));

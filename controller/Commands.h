@@ -4,6 +4,11 @@
 #include "LightCommand.h"
 #include "AnimationState.h"
 
+class SetCommand : public LightCommand {
+public:
+    void execute(const JsonDocument& doc) override;
+};
+
 class SetColorCommand : public LightCommand {
 public:
     void execute(const JsonDocument& doc) override;
