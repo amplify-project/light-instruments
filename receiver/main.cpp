@@ -168,6 +168,8 @@ void processCommand(const Packet& packet, const JsonDocument& doc) {
 
     // Inform the editor that a device has responded to a ping
     Serial.printf("MSG,pong,%s,%s\n", deviceType, device);
+    // Send current packet queue length to editor
+    Serial.printf("MSG,queuelen,%d\n", packetQueue.size());
   }
 }
 
