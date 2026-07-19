@@ -110,6 +110,12 @@ void processIncomingPackets() {
 
   // Packet is a command packet if the key 'command' is set
   if (!currentPacket.doc["command"].isNull()) {
+    const char* command = currentPacket.doc["command"];
+    const char* port = currentPacket.doc["port"];
+    const char* data = currentPacket.doc["data"];
+
+    Serial.printf("%s %s %s\n", command, port);
+
     commandManager.process(currentPacket.doc);
   }
 }
