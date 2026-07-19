@@ -20,6 +20,11 @@ struct Packet {
 // Definitions of globals declared in Globals.h
 CRGB ledsD0[NUM_LEDS_D0];
 
+LedStrip ledStrips[] = {
+    {"D0", ledsD0, NUM_LEDS_D0}
+};
+const int numLedStrips = sizeof(ledStrips) / sizeof(LedStrip);
+
 uint8_t relayAddress[6];
 bool relayFound = false;
 esp_now_peer_info_t peerInfo;
