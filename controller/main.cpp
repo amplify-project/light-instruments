@@ -146,6 +146,7 @@ void setup() {
   commandManager.registerCommand("set", std::unique_ptr<SetCommand>(new SetCommand()));
   commandManager.registerCommand("setColor", std::unique_ptr<LightCommand>(new SetColorCommand()));
   commandManager.registerCommand("pulse", std::unique_ptr<LightCommand>(new PulseCommand()));
+  commandManager.registerCommand("comet", std::unique_ptr<LightCommand>(new CometCommand()));
   commandManager.registerCommand("setBrightness", std::unique_ptr<LightCommand>(new SetBrightnessCommand()));
 
   WiFi.mode(WIFI_STA);

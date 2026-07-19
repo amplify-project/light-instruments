@@ -115,6 +115,76 @@ void PulseCommand::update() {
     FastLED.show();
 }
 
+void CometCommand::execute(const JsonDocument& doc) {
+    const char* value = doc["data"];
+    const char* port = doc["port"];
+
+    bool anyMatch = false;
+    for (int i = 0; i < numLedStrips; i++) {
+        if (isTargetPort(doc, ledStrips[i].name)) {
+            anyMatch = true;
+            break;
+        }
+    }
+
+    if (value && anyMatch) {
+        int r, g, b;
+        uint32_t speed;
+
+        if (sscanf(value, "%d,%d,%d,%u", &r, &g, &b, &speed) == 4) {
+            cometAnim.color = CRGB(r, g, b);
+            cometAnim.speed = speed;
+            cometAnim.lastUpdate = millis() - speed; // Start immediately
+            cometAnim.position = 0;
+
+            if (port) {
+                strncpy(cometAnim.targetPort, port, sizeof(cometAnim.targetPort) - 1);
+                cometAnim.targetPort[sizeof(cometAnim.targetPort) - 1] = '\0';
+            } else {
+                cometAnim.targetPort[0] = '\0';
+            }
+
+            cometAnim.active = true;
+        }
+    }
+}
+
+void CometCommand::update() {
+    if (!cometAnim.active) return;
+
+    uint32_t now = millis();
+    if (now - cometAnim.lastUpdate >= cometAnim.speed) {
+        cometAnim.lastUpdate = now;
+
+        bool stillRunning = false;
+        for (int i = 0; i < numLedStrips; i++) {
+            bool matches = (cometAnim.targetPort[0] == '\0' || strcmp(ledStrips[i].name, cometAnim.targetPort) == 0);
+
+            if (matches) {
+                // Fade existing LEDs to create the tail
+                fadeToBlackBy(ledStrips[i].leds, ledStrips[i].numLeds, 64);
+
+                if (cometAnim.position < ledStrips[i].numLeds) {
+                    // Set new head
+                    ledStrips[i].leds[(int)cometAnim.position] = cometAnim.color;
+                    stillRunning = true;
+                } else if (cometAnim.position < ledStrips[i].numLeds + 10) {
+                    // Allow tail to fade for a few more steps
+                    stillRunning = true;
+                }
+            }
+        }
+
+        FastLED.show();
+
+        if (stillRunning) {
+            cometAnim.position += 1.0f;
+        } else {
+            cometAnim.active = false;
+        }
+    }
+}
+
 void SetBrightnessCommand::execute(const JsonDocument& doc) {
     const char* value = doc["data"];
     if (!value) return;
