@@ -4,7 +4,7 @@
 #include <map>
 #include <memory>
 #include <string>
-#include "LightCommand.h"
+#include "commands/LightCommand.h"
 
 class CommandManager {
 public:

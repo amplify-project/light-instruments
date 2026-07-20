@@ -9,8 +9,15 @@
 #include <FastLED.h>
 
 #include "Globals.h"
-#include "Commands.h"
 #include "CommandManager.h"
+
+#include "commands/SetCommand.h"
+#include "commands/SetColorCommand.h"
+#include "commands/PulseCommand.h"
+#include "commands/CometCommand.h"
+#include "commands/GlitterCommand.h"
+#include "commands/RainbowCommand.h"
+#include "commands/SetBrightnessCommand.h"
 
 struct Packet {
   uint8_t mac[6];
