@@ -59,10 +59,10 @@ void CometCommand::update() {
                     // Allow tail to fade for a few more steps
                     stillRunning = true;
                 }
+
+                showStrip(i);
             }
         }
-
-        FastLED.show();
 
         if (stillRunning) {
             cometAnim.position += 1.0f;

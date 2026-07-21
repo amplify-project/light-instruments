@@ -6,16 +6,12 @@ void SetBrightnessCommand::execute(const JsonDocument& doc) {
     const char* value = doc["data"];
     if (!value) return;
 
-    bool targetMatches = false;
+    int brightness = atoi(value);
+
     for (int i = 0; i < numLedStrips; i++) {
         if (isTargetPort(doc, ledStrips[i].name)) {
-            targetMatches = true;
-            break;
+            ledStrips[i].brightness = brightness;
+            showStrip(i);
         }
-    }
-
-    if (targetMatches) {
-        FastLED.setBrightness(atoi(value));
-        FastLED.show();
     }
 }

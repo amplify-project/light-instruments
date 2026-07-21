@@ -62,9 +62,10 @@ void GlitterCommand::update() {
                     int pos = random16(ledStrips[i].numLeds);
                     ledStrips[i].leds[pos] += glitterAnim.color;
                 }
+
+                showStrip(i);
             }
         }
 
-        FastLED.show();
     }
 }

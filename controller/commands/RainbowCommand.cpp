@@ -51,7 +51,8 @@ void RainbowCommand::update() {
             if (matches) {
                 fill_rainbow(ledStrips[i].leds, ledStrips[i].numLeds, rainbowAnim.initialHue, rainbowAnim.deltaHue);
             }
+
+            showStrip(i);
         }
-        FastLED.show();
     }
 }

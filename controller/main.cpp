@@ -23,9 +23,11 @@ void setup() {
   // Add LED strips here
   addLedStrip(LED1, 30, "LED1");
 
-  FastLED.setBrightness(50);
+  for (int i=0; i<numLedStrips; i++) {
+    ledStrips[i].brightness = 50;
+  }
   FastLED.clear();
-  FastLED.show();
+  showAll();
 
   // Register commands here
   commandManager.registerCommand("set", std::unique_ptr<SetCommand>(new SetCommand()));

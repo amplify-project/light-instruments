@@ -17,10 +17,31 @@ struct LedStrip {
     CRGB* leds;
     uint8_t port;
     int numLeds;
+    uint8_t brightness = 255;
+    CLEDController* controller = nullptr;
+
+    LedStrip(std::string n, CRGB* l, uint8_t p, int nl, uint8_t b = 255, CLEDController* c = nullptr)
+        : name(n), leds(l), port(p), numLeds(nl), brightness(b), controller(c) {}
 };
 
+class CommandManager;
 extern std::vector<LedStrip> ledStrips;
+extern CommandManager commandManager;
 #define numLedStrips ((int)ledStrips.size())
+
+inline void showStrip(int index) {
+    if (index >= 0 && index < numLedStrips) {
+        if (ledStrips[index].controller) {
+            ledStrips[index].controller->showLeds(ledStrips[index].brightness);
+        }
+    }
+}
+
+inline void showAll() {
+    for (int i = 0; i < numLedStrips; i++) {
+        showStrip(i);
+    }
+}
 
 void addLedStrip(uint8_t port, int numLeds, const char* name = nullptr);
 
