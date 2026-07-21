@@ -13,6 +13,7 @@ private:
         bool active = false;
         std::string targetPort = ""; // Empty string means all ports
         uint32_t startTime = 0;
+        uint32_t lastUpdate = 0;
         uint16_t attack = 0;  // ms
         uint16_t decay = 0;   // ms
         uint16_t sustain = 0; // ms

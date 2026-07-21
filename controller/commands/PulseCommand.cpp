@@ -42,30 +42,40 @@ void PulseCommand::update() {
     if (!pulseAnim.active) return;
 
     uint32_t now = millis();
+    if (now - pulseAnim.lastUpdate < 20) return;
+    pulseAnim.lastUpdate = now;
+
     uint32_t elapsed = now - pulseAnim.startTime;
     uint8_t brightness = 0;
 
-    if (elapsed < pulseAnim.attack) {
-        brightness = map(elapsed, 0, pulseAnim.attack, 0, 255);
-    } else if (elapsed < pulseAnim.attack + pulseAnim.decay) {
-        brightness = map(elapsed - pulseAnim.attack, 0, pulseAnim.decay, 255, 200);
-    } else if (elapsed < pulseAnim.attack + pulseAnim.decay + pulseAnim.sustain) {
+    uint32_t attackEnd = pulseAnim.attack;
+    uint32_t decayEnd = attackEnd + pulseAnim.decay;
+    uint32_t sustainEnd = decayEnd + pulseAnim.sustain;
+    uint32_t releaseEnd = sustainEnd + pulseAnim.release;
+
+    if (elapsed < attackEnd) {
+        brightness = (pulseAnim.attack > 0) ? map(elapsed, 0, pulseAnim.attack, 0, 255) : 255;
+    } else if (elapsed < decayEnd) {
+        brightness = (pulseAnim.decay > 0) ? map(elapsed - attackEnd, 0, pulseAnim.decay, 255, 200) : 200;
+    } else if (elapsed < sustainEnd) {
         brightness = 200;
-    } else if (elapsed < pulseAnim.attack + pulseAnim.decay + pulseAnim.sustain + pulseAnim.release) {
-        brightness = map(elapsed - (pulseAnim.attack + pulseAnim.decay + pulseAnim.sustain), 0, pulseAnim.release, 200, 0);
+    } else if (elapsed < releaseEnd) {
+        brightness = (pulseAnim.release > 0) ? map(elapsed - sustainEnd, 0, pulseAnim.release, 200, 0) : 0;
     } else {
         pulseAnim.active = false;
         brightness = 0;
     }
 
-    for (int i = 0; i < numLedStrips; i++) {
-        bool matches = (pulseAnim.targetPort[0] == '\0' || ledStrips[i].name == pulseAnim.targetPort);
+    CRGB scaledColor = pulseAnim.color;
+    scaledColor.nscale8_video(brightness);
 
-        if (matches) {
-            fill_solid(ledStrips[i].leds, ledStrips[i].numLeds, pulseAnim.color);
+    for (int i = 0; i < numLedStrips; i++) {
+        bool matches = (pulseAnim.targetPort.empty() || ledStrips[i].name == pulseAnim.targetPort);
+
+        if (matches && ledStrips[i].leds) {
+            fill_solid(ledStrips[i].leds, ledStrips[i].numLeds, scaledColor);
         }
     }
 
-    FastLED.setBrightness(brightness);
-    FastLED.show();
+    showAll();
 }
