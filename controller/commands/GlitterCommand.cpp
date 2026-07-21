@@ -5,67 +5,19 @@
 
 void GlitterCommand::execute(const JsonDocument& doc) {
     const char* value = doc["data"];
-    const char* port = doc["port"];
 
-    bool anyMatch = false;
-    for (int i = 0; i < numLedStrips; i++) {
-        if (isTargetPort(doc, ledStrips[i].name)) {
-            anyMatch = true;
-            break;
-        }
-    }
-
-    if (value && anyMatch) {
+    if (value) {
         int r, g, b;
         uint32_t duration;
 
         if (sscanf(value, "%d,%d,%d,%u", &r, &g, &b, &duration) == 4) {
-            glitterAnim.color = CRGB(r, g, b);
-            glitterAnim.duration = duration;
-            glitterAnim.startTime = millis();
-            glitterAnim.lastUpdate = millis() - 20; // Start immediately
+            CRGB color = CRGB(r, g, b);
 
-            if (port) {
-                glitterAnim.targetPort = port;
-            } else {
-                glitterAnim.targetPort = "";
-            }
-
-            glitterAnim.active = true;
-        }
-    }
-}
-
-void GlitterCommand::update() {
-    if (!glitterAnim.active) return;
-
-    uint32_t now = millis();
-    uint32_t elapsed = now - glitterAnim.startTime;
-
-    if (elapsed >= glitterAnim.duration) {
-        glitterAnim.active = false;
-        return;
-    }
-
-    if (now - glitterAnim.lastUpdate >= 20) { // 50 FPS
-        glitterAnim.lastUpdate = now;
-
-        for (int i = 0; i < numLedStrips; i++) {
-            bool matches = (glitterAnim.targetPort.empty() || ledStrips[i].name == glitterAnim.targetPort);
-
-            if (matches) {
-                // Fade down existing LEDs to make sparkles short-lived
-                fadeToBlackBy(ledStrips[i].leds, ledStrips[i].numLeds, 32);
-
-                // Add random sparkles
-                if (random8() < 64) { // ~25% chance per frame
-                    int pos = random16(ledStrips[i].numLeds);
-                    ledStrips[i].leds[pos] += glitterAnim.color;
+            for (int i = 0; i < numLedStrips; i++) {
+                if (isTargetPort(doc, ledStrips[i].name)) {
+                    ledStrips[i].activeAnimation = std::unique_ptr<Animation>(new GlitterAnimation(color, duration));
                 }
-
-                showStrip(i);
             }
         }
-
     }
 }

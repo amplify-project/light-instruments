@@ -11,6 +11,8 @@ void SetColorCommand::execute(const JsonDocument& doc) {
             int r, g, b;
 
             if (sscanf(value, "%d,%d,%d", &r, &g, &b) == 3) {
+                ledStrips[i].activeAnimation.reset();
+
                 fill_solid(ledStrips[i].leds, ledStrips[i].numLeds, CRGB(r, g, b));
                 showStrip(i);
             }

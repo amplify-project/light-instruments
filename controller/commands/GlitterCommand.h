@@ -2,21 +2,12 @@
 #define GLITTER_COMMAND_H
 
 #include "LightCommand.h"
+#include "../animations/GlitterAnimation.h"
 
 class GlitterCommand : public LightCommand {
 public:
     void execute(const JsonDocument& doc) override;
-    void update() override;
-
-private:
-    struct GlitterAnim {
-        bool active = false;
-        std::string targetPort = "";
-        CRGB color = CRGB::White;
-        uint32_t duration = 0;
-        uint32_t startTime = 0;
-        uint32_t lastUpdate = 0;
-    } glitterAnim;
+    void update() override {}
 };
 
 #endif // GLITTER_COMMAND_H

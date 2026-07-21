@@ -8,13 +8,27 @@ void CommandManager::process(const JsonDocument& doc) {
     const char* cmdName = doc["command"];
 
     if (cmdName && commands.count(cmdName)) {
-        activeCommand = commands[cmdName].get();
-        activeCommand->execute(doc);
+        commands[cmdName]->execute(doc);
     }
 }
 
 void CommandManager::update() {
-    if (activeCommand) {
-        activeCommand->update();
+    bool needsShow = false;
+
+    for (int i = 0; i < numLedStrips; i++) {
+        if (ledStrips[i].activeAnimation) {
+            if (ledStrips[i].activeAnimation->update(i)) {
+                needsShow = true;
+            }
+
+            if (ledStrips[i].activeAnimation && ledStrips[i].activeAnimation->isFinished()) {
+                ledStrips[i].activeAnimation.reset();
+                needsShow = true;
+            }
+        }
+    }
+
+    if (needsShow) {
+        showAll();
     }
 }

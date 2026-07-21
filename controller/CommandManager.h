@@ -14,7 +14,6 @@ public:
 
 private:
     std::map<std::string, std::unique_ptr<LightCommand>> commands;
-    LightCommand* activeCommand = nullptr;
 };
 
 #endif // COMMAND_MANAGER_H
