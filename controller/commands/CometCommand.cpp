@@ -46,7 +46,7 @@ void CometCommand::update() {
 
         bool stillRunning = false;
         for (int i = 0; i < numLedStrips; i++) {
-            bool matches = (cometAnim.targetPort[0] == '\0' || strcmp(ledStrips[i].name, cometAnim.targetPort) == 0);
+            bool matches = (cometAnim.targetPort[0] == '\0' || ledStrips[i].name == cometAnim.targetPort);
 
             if (matches) {
                 // Fade existing LEDs to create the tail

@@ -3,6 +3,7 @@
 
 #include <ArduinoJson.h>
 #include <FastLED.h>
+#include <string>
 
 class LightCommand {
 public:
@@ -11,9 +12,9 @@ public:
     virtual void update() {}
 
 protected:
-    bool isTargetPort(const JsonDocument& doc, const char* target) {
+    bool isTargetPort(const JsonDocument& doc, const std::string& target) {
         const char* port = doc["port"];
-        return port == nullptr || strcmp(port, target) == 0;
+        return port == nullptr || target == port;
     }
 };
 

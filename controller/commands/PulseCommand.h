@@ -9,7 +9,7 @@ public:
     void update() override;
 
 private:
-    struct PulseAnmin {
+    struct PulseAnim {
         bool active = false;
         char targetPort[16] = ""; // Empty string means all ports
         uint32_t startTime = 0;

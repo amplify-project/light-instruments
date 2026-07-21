@@ -52,7 +52,7 @@ void GlitterCommand::update() {
         glitterAnim.lastUpdate = now;
 
         for (int i = 0; i < numLedStrips; i++) {
-            bool matches = (glitterAnim.targetPort[0] == '\0' || strcmp(ledStrips[i].name, glitterAnim.targetPort) == 0);
+            bool matches = (glitterAnim.targetPort[0] == '\0' || ledStrips[i].name == glitterAnim.targetPort);
 
             if (matches) {
                 // Fade down existing LEDs to make sparkles short-lived
@@ -65,6 +65,7 @@ void GlitterCommand::update() {
                 }
             }
         }
+
         FastLED.show();
     }
 }

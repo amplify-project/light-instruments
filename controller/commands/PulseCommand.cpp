@@ -59,7 +59,7 @@ void PulseCommand::update() {
     }
 
     for (int i = 0; i < numLedStrips; i++) {
-        bool matches = (pulseAnim.targetPort[0] == '\0' || strcmp(ledStrips[i].name, pulseAnim.targetPort) == 0);
+        bool matches = (pulseAnim.targetPort[0] == '\0' || ledStrips[i].name == pulseAnim.targetPort);
 
         if (matches) {
             fill_solid(ledStrips[i].leds, ledStrips[i].numLeds, pulseAnim.color);

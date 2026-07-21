@@ -47,7 +47,7 @@ void RainbowCommand::update() {
         rainbowAnim.initialHue++;
 
         for (int i = 0; i < numLedStrips; i++) {
-            bool matches = (rainbowAnim.targetPort[0] == '\0' || strcmp(ledStrips[i].name, rainbowAnim.targetPort) == 0);
+            bool matches = (rainbowAnim.targetPort[0] == '\0' || ledStrips[i].name == rainbowAnim.targetPort);
 
             if (matches) {
                 fill_rainbow(ledStrips[i].leds, ledStrips[i].numLeds, rainbowAnim.initialHue, rainbowAnim.deltaHue);
