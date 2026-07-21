@@ -15,7 +15,7 @@ public:
 protected:
     bool isTargetPort(const JsonDocument& doc, const std::string& target) {
         const char* port = doc["port"];
-        return port == nullptr || target == port;
+        return port == nullptr || port[0] == '\0' || target == port;
     }
 };
 
