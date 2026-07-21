@@ -24,21 +24,19 @@ struct Packet {
   JsonDocument doc;
 };
 
-std::vector<LedStrip> ledStrips;
-CommandManager commandManager;
-
-void addLedStrip(uint8_t port, int numLeds, const char* name) {
+inline void addLedStrip(uint8_t port, int numLeds, const char* name) {
   CRGB* leds = new CRGB[numLeds];
   std::string stripName = name ? name : "D" + std::to_string(port);
+  CLEDController* controller = nullptr;
 
   switch(port) {
-    case LED1: FastLED.addLeds<WS2812B, LED1, GRB>(leds, numLeds); break;
-    case LED2: FastLED.addLeds<WS2812B, LED2, GRB>(leds, numLeds); break;
-    case LED3: FastLED.addLeds<WS2812B, LED3, GRB>(leds, numLeds); break;
-    case LED4: FastLED.addLeds<WS2812B, LED4, GRB>(leds, numLeds); break;
+    case LED1: controller = &FastLED.addLeds<WS2812B, LED1, GRB>(leds, numLeds); break;
+    case LED2: controller = &FastLED.addLeds<WS2812B, LED2, GRB>(leds, numLeds); break;
+    case LED3: controller = &FastLED.addLeds<WS2812B, LED3, GRB>(leds, numLeds); break;
+    case LED4: controller = &FastLED.addLeds<WS2812B, LED4, GRB>(leds, numLeds); break;
   }
 
-  ledStrips.push_back({stripName, leds, port, numLeds});
+  ledStrips.emplace_back(stripName, leds, port, numLeds, (uint8_t)255, controller);
 }
 
 uint8_t relayAddress[6];

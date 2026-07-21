@@ -11,7 +11,7 @@ public:
 private:
     struct GlitterAnim {
         bool active = false;
-        char targetPort[16] = "";
+        std::string targetPort = "";
         CRGB color = CRGB::White;
         uint32_t duration = 0;
         uint32_t startTime = 0;

@@ -26,10 +26,9 @@ void GlitterCommand::execute(const JsonDocument& doc) {
             glitterAnim.lastUpdate = millis() - 20; // Start immediately
 
             if (port) {
-                strncpy(glitterAnim.targetPort, port, sizeof(glitterAnim.targetPort) - 1);
-                glitterAnim.targetPort[sizeof(glitterAnim.targetPort) - 1] = '\0';
+                glitterAnim.targetPort = port;
             } else {
-                glitterAnim.targetPort[0] = '\0';
+                glitterAnim.targetPort = "";
             }
 
             glitterAnim.active = true;
@@ -52,7 +51,7 @@ void GlitterCommand::update() {
         glitterAnim.lastUpdate = now;
 
         for (int i = 0; i < numLedStrips; i++) {
-            bool matches = (glitterAnim.targetPort[0] == '\0' || ledStrips[i].name == glitterAnim.targetPort);
+            bool matches = (glitterAnim.targetPort.empty() || ledStrips[i].name == glitterAnim.targetPort);
 
             if (matches) {
                 // Fade down existing LEDs to make sparkles short-lived

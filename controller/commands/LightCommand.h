@@ -1,6 +1,7 @@
 #ifndef LIGHT_COMMAND_H
 #define LIGHT_COMMAND_H
 
+#include "../Globals.h"
 #include <ArduinoJson.h>
 #include <FastLED.h>
 #include <string>

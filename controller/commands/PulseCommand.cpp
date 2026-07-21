@@ -25,12 +25,12 @@ void PulseCommand::execute(const JsonDocument& doc) {
             pulseAnim.sustain = s;
             pulseAnim.release = re;
             pulseAnim.startTime = millis();
+            pulseAnim.lastUpdate = 0;
 
             if (port) {
-                strncpy(pulseAnim.targetPort, port, sizeof(pulseAnim.targetPort) - 1);
-                pulseAnim.targetPort[sizeof(pulseAnim.targetPort) - 1] = '\0';
+                pulseAnim.targetPort = port;
             } else {
-                pulseAnim.targetPort[0] = '\0';
+                pulseAnim.targetPort = "";
             }
 
             pulseAnim.active = true;

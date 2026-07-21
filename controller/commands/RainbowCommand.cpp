@@ -27,10 +27,9 @@ void RainbowCommand::execute(const JsonDocument& doc) {
         }
 
         if (port) {
-            strncpy(rainbowAnim.targetPort, port, sizeof(rainbowAnim.targetPort) - 1);
-            rainbowAnim.targetPort[sizeof(rainbowAnim.targetPort) - 1] = '\0';
+            rainbowAnim.targetPort = port;
         } else {
-            rainbowAnim.targetPort[0] = '\0';
+            rainbowAnim.targetPort = "";
         }
 
         rainbowAnim.active = true;
@@ -47,7 +46,7 @@ void RainbowCommand::update() {
         rainbowAnim.initialHue++;
 
         for (int i = 0; i < numLedStrips; i++) {
-            bool matches = (rainbowAnim.targetPort[0] == '\0' || ledStrips[i].name == rainbowAnim.targetPort);
+            bool matches = (rainbowAnim.targetPort.empty() || ledStrips[i].name == rainbowAnim.targetPort);
 
             if (matches) {
                 fill_rainbow(ledStrips[i].leds, ledStrips[i].numLeds, rainbowAnim.initialHue, rainbowAnim.deltaHue);

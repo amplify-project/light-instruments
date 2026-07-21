@@ -11,6 +11,9 @@
 // Set device name here
 String deviceName = "receiver1";
 
+std::vector<LedStrip> ledStrips;
+CommandManager commandManager;
+
 void setup() {
   Serial.begin(115200);
 

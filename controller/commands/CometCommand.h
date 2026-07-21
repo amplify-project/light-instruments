@@ -11,7 +11,7 @@ public:
 private:
     struct CometAnim {
         bool active = false;
-        char targetPort[16] = "";
+        std::string targetPort = "";
         CRGB color = CRGB::White;
         uint32_t speed = 0;
         uint32_t lastUpdate = 0;

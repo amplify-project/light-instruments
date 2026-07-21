@@ -11,7 +11,7 @@ public:
 private:
     struct PulseAnim {
         bool active = false;
-        char targetPort[16] = ""; // Empty string means all ports
+        std::string targetPort = ""; // Empty string means all ports
         uint32_t startTime = 0;
         uint16_t attack = 0;  // ms
         uint16_t decay = 0;   // ms

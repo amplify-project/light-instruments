@@ -26,10 +26,9 @@ void CometCommand::execute(const JsonDocument& doc) {
             cometAnim.position = 0;
 
             if (port) {
-                strncpy(cometAnim.targetPort, port, sizeof(cometAnim.targetPort) - 1);
-                cometAnim.targetPort[sizeof(cometAnim.targetPort) - 1] = '\0';
+                cometAnim.targetPort = port;
             } else {
-                cometAnim.targetPort[0] = '\0';
+                cometAnim.targetPort = "";
             }
 
             cometAnim.active = true;
@@ -43,10 +42,10 @@ void CometCommand::update() {
     uint32_t now = millis();
     if (now - cometAnim.lastUpdate >= cometAnim.speed) {
         cometAnim.lastUpdate = now;
-
         bool stillRunning = false;
+
         for (int i = 0; i < numLedStrips; i++) {
-            bool matches = (cometAnim.targetPort[0] == '\0' || ledStrips[i].name == cometAnim.targetPort);
+            bool matches = (cometAnim.targetPort.empty() || ledStrips[i].name == cometAnim.targetPort);
 
             if (matches) {
                 // Fade existing LEDs to create the tail
