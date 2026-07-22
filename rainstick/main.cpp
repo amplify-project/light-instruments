@@ -1,6 +1,6 @@
 #include <esp_now.h>
 #include <WiFi.h>
-#include <ArduinoJson.h>
+#include "Protocol.h"
 
 #define PHOTODIODE_PIN A3
 
@@ -15,55 +15,49 @@ const int threshold = 50; // Ignore minor voltage jitter
 int lastValue = -1;
 
 void onDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
-  JsonDocument doc;
-  DeserializationError error = deserializeJson(doc, incomingData, len);
+  if (len < (int)sizeof(ProtocolHeader)) return;
+  ProtocolHeader* header = (ProtocolHeader*)incomingData;
 
-  if (!error) {
-    if (doc["command"] == "discovery") {
-      if (!relayFound) {
-        memcpy(relayAddress, mac, 6);
-        relayFound = true;
-      }
-    } else if (doc["command"] == "ping") {
-      pingReceived = true;
+  if (header->type == MSG_DISCOVERY) {
+    if (!relayFound) {
+      memcpy(relayAddress, mac, 6);
+      relayFound = true;
     }
+  } else if (header->type == MSG_PING) {
+    pingReceived = true;
   }
 }
 
 void sendPong() {
-  JsonDocument doc;
-  doc["command"] = "pong";
-  doc["deviceType"] = "sensor";
-  doc["device"] = deviceName;
-
-  char buffer[128];
-  serializeJson(doc, buffer);
+  PongPacket packet;
+  memset(&packet, 0, sizeof(packet));
+  packet.type = MSG_PONG;
+  strncpy(packet.deviceName, deviceName.c_str(), sizeof(packet.deviceName) - 1);
+  strncpy(packet.deviceType, "sensor", sizeof(packet.deviceType) - 1);
 
   pingReceived = false;
-  esp_now_send(relayAddress, (uint8_t *) buffer, strlen(buffer) + 1);
+  esp_now_send(relayAddress, (uint8_t *)&packet, sizeof(packet));
 }
 
 void sendDiscoveryResponse() {
-  JsonDocument doc;
-  doc["command"] = "discoveryResponse";
-  doc["deviceType"] = "sensor";
-  doc["device"] = deviceName;
+  DiscoveryResponsePacket packet;
+  memset(&packet, 0, sizeof(packet));
+  packet.type = MSG_DISCOVERY_RESPONSE;
+  strncpy(packet.deviceName, deviceName.c_str(), sizeof(packet.deviceName) - 1);
+  strncpy(packet.deviceType, "sensor", sizeof(packet.deviceType) - 1);
 
-  char buffer[128];
-  serializeJson(doc, buffer);
-
-  esp_now_send(relayAddress, (uint8_t *) buffer, strlen(buffer) + 1);
+  esp_now_send(relayAddress, (uint8_t *)&packet, sizeof(packet));
 }
 
 void sendEvent(int val) {
-  JsonDocument doc;
-  doc["device"] = deviceName;
-  doc["port"] = "A3";
-  doc["data"] = val;
+  DataPacket packet;
+  memset(&packet, 0, sizeof(packet));
+  packet.type = MSG_DATA;
+  strncpy(packet.deviceName, deviceName.c_str(), sizeof(packet.deviceName) - 1);
+  strncpy(packet.port, "A3", sizeof(packet.port) - 1);
+  packet.value = val;
 
-  char buffer[128];
-  serializeJson(doc, buffer);
-  esp_now_send(relayAddress, (uint8_t *)buffer, strlen(buffer) + 1);
+  esp_now_send(relayAddress, (uint8_t *)&packet, sizeof(packet));
 
   Serial.printf("Value: %d\n", val);
 }
