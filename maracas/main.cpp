@@ -1,6 +1,9 @@
 #include <esp_now.h>
 #include <WiFi.h>
 #include <ArduinoJson.h>
+#include <Bounce2.h>
+
+#define DEBOUNCE_INTERVAL 10
 
 uint8_t relayAddress[6];
 bool relayFound = false;
@@ -10,7 +13,7 @@ String deviceName = "maracas1";
 bool pingReceived = false;
 
 const int port = D3;
-int lastState = 0;
+Bounce debouncer = Bounce();
 
 void onDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   JsonDocument doc;
@@ -74,16 +77,18 @@ void sendEvent() {
 void setup() {
   Serial.begin(115200);
 
-  pinMode(port, INPUT);
-  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, LOW);
+  delay(100);
+  digitalWrite(LED_BUILTIN, HIGH);
+  delay(100);
+  digitalWrite(LED_BUILTIN, LOW);
+  delay(100);
+  digitalWrite(LED_BUILTIN, HIGH);
 
-  digitalWrite(LED_BUILTIN, LOW);
-  delay(100);
-  digitalWrite(LED_BUILTIN, HIGH);
-  delay(100);
-  digitalWrite(LED_BUILTIN, LOW);
-  delay(100);
-  digitalWrite(LED_BUILTIN, HIGH);
+  pinMode(port, INPUT_PULLDOWN);
+  debouncer.attach(port, INPUT_PULLDOWN);
+  debouncer.interval(DEBOUNCE_INTERVAL); // 25ms debounce interval
+  pinMode(LED_BUILTIN, OUTPUT);
 
   // Initialise ESP-NOW
   WiFi.mode(WIFI_STA);
@@ -122,17 +127,12 @@ void loop() {
     sendPong();
   }
 
-  int currentState = digitalRead(port);
+  debouncer.update();
 
-  // Check for state change
-  if (currentState != lastState) {
-    // Only send if state is HIGH
-    if (currentState == HIGH) {
-      sendEvent();
-    }
-
-    lastState = currentState;
+  // Check for state change (rising edge)
+  if (debouncer.changed()) {
+    sendEvent();
   }
 
-  delay(10);
+  delay(1); // Small delay to prevent tight loop, though debouncer handles timing
 }
