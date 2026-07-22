@@ -324,7 +324,9 @@ void processSerialInput() {
 }
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(460800);
+  delay(500); // Give the serial monitor time to connect
+
   WiFi.mode(WIFI_STA);
 
   if (esp_now_init() != 0) {
