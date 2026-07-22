@@ -28,6 +28,8 @@ const unsigned long DISCOVERY_INTERVAL = 10000; // 10 seconds
 unsigned long lastPingTime = 0;
 const unsigned long PING_INTERVAL = 10000;
 
+const size_t MAX_QUEUE_SIZE = 100;
+
 volatile unsigned long ledFlashTime = 0;
 const int FLASH_DURATION = 50;
 
@@ -73,7 +75,11 @@ void onReceive(const uint8_t *macAddr, const uint8_t *data, int len) {
 
   // Protect the queue with a mutex since this callback runs in a different task context
   std::lock_guard<std::mutex> lock(queueMtx);
-  packetQueue.push_back(p);
+
+  // Prevent unbounded growth which can cause crashes
+  if (packetQueue.size() < MAX_QUEUE_SIZE) {
+    packetQueue.push_back(p);
+  }
 
   // Flash LED for activity
   triggerActivityIndicator();
