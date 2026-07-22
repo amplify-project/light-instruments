@@ -5,7 +5,7 @@
 
 class SetColorCommand : public LightCommand {
 public:
-    void execute(const JsonDocument& doc) override;
+  void execute(const JsonDocument& doc) override;
 };
 
 #endif // SET_COLOR_COMMAND_H

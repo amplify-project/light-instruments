@@ -1,34 +1,34 @@
 #include "CommandManager.h"
 
 void CommandManager::registerCommand(const std::string& name, std::unique_ptr<LightCommand> cmd) {
-    commands[name] = std::move(cmd);
+  commands[name] = std::move(cmd);
 }
 
 void CommandManager::process(const JsonDocument& doc) {
-    const char* cmdName = doc["command"];
+  const char* cmdName = doc["command"];
 
-    if (cmdName && commands.count(cmdName)) {
-        commands[cmdName]->execute(doc);
-    }
+  if (cmdName && commands.count(cmdName)) {
+    commands[cmdName]->execute(doc);
+  }
 }
 
 void CommandManager::update() {
-    bool needsShow = false;
+  bool needsShow = false;
 
-    for (int i = 0; i < numLedStrips; i++) {
-        if (ledStrips[i].activeAnimation) {
-            if (ledStrips[i].activeAnimation->update(i)) {
-                needsShow = true;
-            }
+  for (int i = 0; i < numLedStrips; i++) {
+    if (ledStrips[i].activeAnimation) {
+      if (ledStrips[i].activeAnimation->update(i)) {
+        needsShow = true;
+      }
 
-            if (ledStrips[i].activeAnimation && ledStrips[i].activeAnimation->isFinished()) {
-                ledStrips[i].activeAnimation.reset();
-                needsShow = true;
-            }
-        }
+      if (ledStrips[i].activeAnimation && ledStrips[i].activeAnimation->isFinished()) {
+        ledStrips[i].activeAnimation.reset();
+        needsShow = true;
+      }
     }
+  }
 
-    if (needsShow) {
-        showAll();
-    }
+  if (needsShow) {
+    showAll();
+  }
 }

@@ -6,8 +6,8 @@
 
 class GlitterCommand : public LightCommand {
 public:
-    void execute(const JsonDocument& doc) override;
-    void update() override {}
+  void execute(const JsonDocument& doc) override;
+  void update() override {}
 };
 
 #endif // GLITTER_COMMAND_H

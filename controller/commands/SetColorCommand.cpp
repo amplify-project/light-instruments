@@ -3,23 +3,23 @@
 #include <Arduino.h>
 
 void SetColorCommand::execute(const JsonDocument& doc) {
-    const char* value = doc["data"];
-    if (!value) return;
+  const char* value = doc["data"];
+  if (!value) return;
 
-    for (int i = 0; i < numLedStrips; i++) {
-        if (isTargetPort(doc, ledStrips[i].name)) {
-            int r, g, b;
+  for (int i = 0; i < numLedStrips; i++) {
+    if (isTargetPort(doc, ledStrips[i].name)) {
+      int r, g, b;
 
-            if (sscanf(value, "%d,%d,%d", &r, &g, &b) == 3) {
-                CRGB newColor(r, g, b);
+      if (sscanf(value, "%d,%d,%d", &r, &g, &b) == 3) {
+        CRGB newColor(r, g, b);
 
-                if (ledStrips[i].activeAnimation) {
-                    ledStrips[i].activeAnimation->setColor(newColor);
-                } else {
-                    fill_solid(ledStrips[i].leds, ledStrips[i].numLeds, newColor);
-                    showStrip(i);
-                }
-            }
+        if (ledStrips[i].activeAnimation) {
+          ledStrips[i].activeAnimation->setColor(newColor);
+        } else {
+          fill_solid(ledStrips[i].leds, ledStrips[i].numLeds, newColor);
+          showStrip(i);
         }
+      }
     }
+  }
 }

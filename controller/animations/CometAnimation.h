@@ -8,45 +8,45 @@
 
 class CometAnimation : public Animation {
 public:
-    CometAnimation(CRGB color, uint32_t speed)
-        : color(color), speed(speed), lastUpdate(millis() - speed), position(0), finished(false) {}
+  CometAnimation(CRGB color, uint32_t speed)
+    : color(color), speed(speed), lastUpdate(millis() - speed), position(0), finished(false) {}
 
-    bool update(int stripIndex) override {
-        uint32_t now = millis();
-        if (now - lastUpdate >= speed) {
-            lastUpdate = now;
+  bool update(int stripIndex) override {
+    uint32_t now = millis();
+    if (now - lastUpdate >= speed) {
+      lastUpdate = now;
 
-            fadeToBlackBy(ledStrips[stripIndex].leds, ledStrips[stripIndex].numLeds, 64);
+      fadeToBlackBy(ledStrips[stripIndex].leds, ledStrips[stripIndex].numLeds, 64);
 
-            if (position < ledStrips[stripIndex].numLeds) {
-                ledStrips[stripIndex].leds[(int)position] = color;
-                position += 1.0f;
-            } else if (position < ledStrips[stripIndex].numLeds + 10) {
-                position += 1.0f;
-            } else {
-                finished = true;
-            }
+      if (position < ledStrips[stripIndex].numLeds) {
+        ledStrips[stripIndex].leds[(int)position] = color;
+        position += 1.0f;
+      } else if (position < ledStrips[stripIndex].numLeds + 10) {
+        position += 1.0f;
+      } else {
+        finished = true;
+      }
 
-            return true;
-        }
-
-        return false;
+      return true;
     }
 
-    bool isFinished() override {
-        return finished;
-    }
+    return false;
+  }
 
-    void setColor(CRGB newColor) override {
-        color = newColor;
-    }
+  bool isFinished() override {
+    return finished;
+  }
+
+  void setColor(CRGB newColor) override {
+    color = newColor;
+  }
 
 private:
-    CRGB color;
-    uint32_t speed;
-    uint32_t lastUpdate;
-    float position;
-    bool finished;
+  CRGB color;
+  uint32_t speed;
+  uint32_t lastUpdate;
+  float position;
+  bool finished;
 };
 
 #endif // COMET_ANIMATION_H

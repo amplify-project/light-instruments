@@ -8,30 +8,30 @@
 
 class RainbowAnimation : public Animation {
 public:
-    RainbowAnimation(uint8_t deltaHue) : deltaHue(deltaHue), lastUpdate(0), initialHue(0) {}
+  RainbowAnimation(uint8_t deltaHue) : deltaHue(deltaHue), lastUpdate(0), initialHue(0) {}
 
-    bool update(int stripIndex) override {
-        uint32_t now = millis();
+  bool update(int stripIndex) override {
+    uint32_t now = millis();
 
-        if (now - lastUpdate >= 20) {
-            lastUpdate = now;
-            initialHue++;
-            fill_rainbow(ledStrips[stripIndex].leds, ledStrips[stripIndex].numLeds, initialHue, deltaHue);
+    if (now - lastUpdate >= 20) {
+      lastUpdate = now;
+      initialHue++;
+      fill_rainbow(ledStrips[stripIndex].leds, ledStrips[stripIndex].numLeds, initialHue, deltaHue);
 
-            return true;
-        }
-
-        return false;
+      return true;
     }
 
-    bool isFinished() override {
-        return false;
-    }
+    return false;
+  }
+
+  bool isFinished() override {
+    return false;
+  }
 
 private:
-    uint8_t deltaHue;
-    uint32_t lastUpdate;
-    uint8_t initialHue;
+  uint8_t deltaHue;
+  uint32_t lastUpdate;
+  uint8_t initialHue;
 };
 
 #endif // RAINBOW_ANIMATION_H

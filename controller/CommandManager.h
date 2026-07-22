@@ -8,12 +8,12 @@
 
 class CommandManager {
 public:
-    void registerCommand(const std::string& name, std::unique_ptr<LightCommand> cmd);
-    void process(const JsonDocument& doc);
-    void update();
+  void registerCommand(const std::string& name, std::unique_ptr<LightCommand> cmd);
+  void process(const JsonDocument& doc);
+  void update();
 
 private:
-    std::map<std::string, std::unique_ptr<LightCommand>> commands;
+  std::map<std::string, std::unique_ptr<LightCommand>> commands;
 };
 
 #endif // COMMAND_MANAGER_H

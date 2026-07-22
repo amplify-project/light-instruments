@@ -5,10 +5,10 @@
 
 class Animation {
 public:
-    virtual ~Animation() = default;
-    virtual bool update(int stripIndex) = 0;
-    virtual bool isFinished() = 0;
-    virtual void setColor(CRGB color) {}
+  virtual ~Animation() = default;
+  virtual bool update(int stripIndex) = 0;
+  virtual bool isFinished() = 0;
+  virtual void setColor(CRGB color) {}
 };
 
 #endif // ANIMATION_H
