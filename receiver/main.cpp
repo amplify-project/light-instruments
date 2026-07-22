@@ -16,7 +16,12 @@ std::vector<Packet> packetQueue;
 std::mutex queueMtx;
 uint8_t broadcastAddress[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
-std::map<String, std::array<uint8_t, 6>> discoveredDevices;
+struct DeviceInfo {
+  std::array<uint8_t, 6> mac;
+  String type;
+};
+
+std::map<String, DeviceInfo> discoveredDevices;
 unsigned long lastDiscoveryTime = 0;
 const unsigned long DISCOVERY_INTERVAL = 10000; // 10 seconds
 
@@ -137,7 +142,7 @@ void handlePingInterval() {
     lastPingTime = millis();
 
     for (auto const& device : discoveredDevices) {
-      sendPing(device.second.data());
+      sendPing(device.second.mac.data());
     }
   }
 }
@@ -161,7 +166,7 @@ void processCommand(const Packet& packet, const JsonDocument& doc) {
     Serial.printf("MSG,discovery,%s,%s\n", deviceType, device);
 
     // Store device name and MAC address in list of discovered devices
-    discoveredDevices[device] = mac;
+    discoveredDevices[device] = { mac, deviceType };
   } else if (doc["command"] == "pong") {
     const char* device = doc["device"];
     const char* deviceType = doc["deviceType"];
@@ -252,7 +257,7 @@ void sendDeviceCommand(const String& device, const String& port, const String& c
   serializeJson(doc, buffer);
 
   // Get destination MAC address
-  uint8_t* mac = discoveredDevices[device].data();
+  uint8_t* mac = discoveredDevices[device].mac.data();
 
   // Ensure the device is added as a peer
   addPeer(mac);
