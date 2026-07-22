@@ -79,7 +79,7 @@ void setup() {
 
   pinMode(port, INPUT_PULLDOWN);
   debouncer.attach(port, INPUT_PULLDOWN);
-  debouncer.interval(DEBOUNCE_INTERVAL); // 25ms debounce interval
+  debouncer.interval(DEBOUNCE_INTERVAL);
   pinMode(LED_BUILTIN, OUTPUT);
 
   // Initialise ESP-NOW
@@ -122,7 +122,7 @@ void loop() {
   debouncer.update();
 
   // Check for state change (rising edge)
-  if (debouncer.changed()) {
+  if (debouncer.rose()) {
     sendEvent();
   }
 
