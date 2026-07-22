@@ -1,5 +1,4 @@
 #include <Arduino.h>
-#include <ArduinoJson.h>
 #include <WiFi.h>
 #include <esp_now.h>
 #include <vector>
@@ -7,9 +6,12 @@
 #include <map>
 #include <array>
 
+#include "Protocol.h"
+
 struct Packet {
   uint8_t mac[6];
-  String data;
+  uint8_t data[250];
+  int len;
 };
 
 std::vector<Packet> packetQueue;
@@ -72,7 +74,8 @@ void onReceive(const uint8_t *macAddr, const uint8_t *data, int len) {
   // Create a packet structure to store data and MAC
   Packet p;
   memcpy(p.mac, macAddr, 6);
-  p.data = String((const char*)data, len);
+  p.len = (len > 250) ? 250 : len;
+  memcpy(p.data, data, p.len);
 
   // Protect the queue with a mutex since this callback runs in a different task context
   std::lock_guard<std::mutex> lock(queueMtx);
@@ -100,12 +103,8 @@ void updateActivityIndicator() {
  * @brief Send a device discovery packet to the broadcast address.
  */
 void sendDiscovery() {
-  JsonDocument doc;
-  doc["command"] = "discovery";
-
-  char buffer[128];
-  serializeJson(doc, buffer);
-  esp_now_send(broadcastAddress, (uint8_t *)buffer, strlen(buffer) + 1);
+  DiscoveryPacket packet;
+  esp_now_send(broadcastAddress, (uint8_t *)&packet, sizeof(packet));
 
   triggerActivityIndicator();
 }
@@ -127,15 +126,11 @@ void handleDiscoveryInterval() {
  * @param destination MAC address of the target device
  */
 void sendPing(const uint8_t* destination) {
-  JsonDocument doc;
-  doc["command"] = "ping";
-
-  char buffer[128];
-  serializeJson(doc, buffer);
+  PingPacket packet;
 
   // Ensure the device is added as a peer
   addPeer(destination);
-  esp_now_send(destination, (uint8_t *)buffer, strlen(buffer) + 1);
+  esp_now_send(destination, (uint8_t *)&packet, sizeof(packet));
 
   triggerActivityIndicator();
 }
@@ -151,37 +146,6 @@ void handlePingInterval() {
     for (auto const& device : discoveredDevices) {
       sendPing(device.second.mac.data());
     }
-  }
-}
-
-/**
- * @brief Processes a received command package like device discovery requests
- * and responses.
- *
- * @param packet Received data packet
- * @param doc Parsed JSON data representing the received command
- */
-void processCommand(const Packet& packet, const JsonDocument& doc) {
-  if (doc["command"] == "discoveryResponse") {
-    // Extract device name, type and MAC address from packet
-    const char* device = doc["device"];
-    const char* deviceType = doc["deviceType"];
-    std::array<uint8_t, 6> mac;
-    memcpy(mac.data(), packet.mac, 6);
-
-    // Inform the editor that a device has been discovered
-    Serial.printf("MSG,discovery,%s,%s\n", deviceType, device);
-
-    // Store device name and MAC address in list of discovered devices
-    discoveredDevices[device] = { mac, deviceType };
-  } else if (doc["command"] == "pong") {
-    const char* device = doc["device"];
-    const char* deviceType = doc["deviceType"];
-
-    // Inform the editor that a device has responded to a ping
-    Serial.printf("MSG,pong,%s,%s\n", deviceType, device);
-    // Send current packet queue length to editor
-    Serial.printf("MSG,queuelen,%d\n", packetQueue.size());
   }
 }
 
@@ -208,32 +172,41 @@ void processIncomingPackets() {
     return;
   }
 
-  // Deserialise packet data
-  JsonDocument doc;
-  DeserializationError error = deserializeJson(doc, currentPacket.data);
-
-  if (error) {
+  if (currentPacket.len < (int)sizeof(ProtocolHeader)) {
     return;
   }
 
-  const char* device = doc["device"];
+  ProtocolHeader* header = (ProtocolHeader*)currentPacket.data;
 
-  // Return if the packet does not contain a device name
-  if (!device) {
-    return;
-  }
+  switch (header->type) {
+    case MSG_DISCOVERY_RESPONSE: {
+      if (currentPacket.len < (int)sizeof(DiscoveryResponsePacket)) return;
+      DiscoveryResponsePacket* p = (DiscoveryResponsePacket*)currentPacket.data;
 
-  // Packet is a command packet if the key 'command' is set
-  if (!doc["command"].isNull()) {
-    // Process the command packet and return
-    processCommand(currentPacket, doc);
-    return;
-  }
+      std::array<uint8_t, 6> mac;
+      memcpy(mac.data(), currentPacket.mac, 6);
 
-  // If the packet data contains the keys 'port' and 'data', extract the values
-  // and print it to the serial connection
-  if (!doc["port"].isNull() && !doc["data"].isNull()) {
-    Serial.printf("DATA,%s,%s,%d\n", device, (const char*)doc["port"], (int)doc["data"]);
+      Serial.printf("MSG,discovery,%s,%s\n", p->deviceType, p->deviceName);
+      discoveredDevices[p->deviceName] = { mac, p->deviceType };
+      break;
+    }
+    case MSG_PONG: {
+      if (currentPacket.len < (int)sizeof(PongPacket)) return;
+      PongPacket* p = (PongPacket*)currentPacket.data;
+
+      Serial.printf("MSG,pong,%s,%s\n", p->deviceType, p->deviceName);
+      Serial.printf("MSG,queuelen,%d\n", packetQueue.size());
+      break;
+    }
+    case MSG_DATA: {
+      if (currentPacket.len < (int)sizeof(DataPacket)) return;
+      DataPacket* p = (DataPacket*)currentPacket.data;
+
+      Serial.printf("DATA,%s,%s,%d\n", p->deviceName, p->port, p->value);
+      break;
+    }
+    default:
+      break;
   }
 }
 
@@ -247,22 +220,20 @@ void processIncomingPackets() {
  * @param value Parameters for the command
  */
 void sendToDevice(const String& device, const uint8_t* mac, const String& port, const String& command, const String& value) {
-  // Build JSON data
-  JsonDocument doc;
-  doc["device"] = device;
-  doc["port"] = port;
-  doc["command"] = command;
-  doc["data"] = value;
+  CommandPacket packet;
 
-  // Serialise packet to string
-  char buffer[256];
-  serializeJson(doc, buffer);
+  memset(&packet, 0, sizeof(packet));
+  packet.type = MSG_COMMAND;
+  strncpy(packet.deviceName, device.c_str(), sizeof(packet.deviceName) - 1);
+  strncpy(packet.port, port.c_str(), sizeof(packet.port) - 1);
+  strncpy(packet.command, command.c_str(), sizeof(packet.command) - 1);
+  strncpy(packet.value, value.c_str(), sizeof(packet.value) - 1);
 
   // Ensure the device is added as a peer
   addPeer(mac);
 
   // Send packet and trigger builtin LED
-  esp_now_send(mac, (uint8_t *)buffer, strlen(buffer) + 1);
+  esp_now_send(mac, (uint8_t *)&packet, sizeof(packet));
   triggerActivityIndicator();
 }
 
@@ -331,6 +302,7 @@ void handleSerialCommand(String line) {
 void processSerialInput() {
   while (Serial.available() > 0) {
     char c = Serial.read();
+
     if (c == '\n') {
       handleSerialCommand(serialBuffer);
       serialBuffer = "";
