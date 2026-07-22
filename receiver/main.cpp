@@ -29,6 +29,7 @@ unsigned long lastPingTime = 0;
 const unsigned long PING_INTERVAL = 10000;
 
 const size_t MAX_QUEUE_SIZE = 100;
+String serialBuffer = "";
 
 volatile unsigned long ledFlashTime = 0;
 const int FLASH_DURATION = 50;
@@ -294,16 +295,11 @@ void sendDeviceCommand(const String& device, const String& port, const String& c
 }
 
 /**
- * @brief Processes data received through the serial connection.
+ * @brief Handles a single command line received via Serial.
+ *
+ * @param line The command line to process
  */
-void processSerialInput() {
-  // Return if no data is available
-  if (Serial.available() == 0) {
-    return;
-  }
-
-  // Read until the next newline
-  String line = Serial.readStringUntil('\n');
+void handleSerialCommand(String line) {
   line.trim();
 
   // Return if the line is empty
@@ -326,6 +322,21 @@ void processSerialInput() {
 
     // Send command to device
     sendDeviceCommand(device, port, command, value);
+  }
+}
+
+/**
+ * @brief Processes data received through the serial connection in a non-blocking way.
+ */
+void processSerialInput() {
+  while (Serial.available() > 0) {
+    char c = Serial.read();
+    if (c == '\n') {
+      handleSerialCommand(serialBuffer);
+      serialBuffer = "";
+    } else if (c != '\r') {
+      serialBuffer += c;
+    }
   }
 }
 
