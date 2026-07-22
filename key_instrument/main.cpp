@@ -1,6 +1,6 @@
 #include <esp_now.h>
 #include <WiFi.h>
-#include <ArduinoJson.h>
+#include "Protocol.h"
 
 #define BTN_PRESSED 1
 #define BTN_RELEASED 0
@@ -19,62 +19,54 @@ const int numButtons = 3;
 int lastStates[] = {HIGH, HIGH, HIGH};
 
 void onDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
-  JsonDocument doc;
-  DeserializationError error = deserializeJson(doc, incomingData, len);
+  if (len < (int)sizeof(ProtocolHeader)) return;
+  ProtocolHeader* header = (ProtocolHeader*)incomingData;
 
-  if (!error) {
-    if (doc["command"] == "discovery") {
-      if (!relayFound) {
-        memcpy(relayAddress, mac, 6);
-        relayFound = true;
-      }
-    } else if (doc["command"] == "ping") {
-      pingReceived = true;
+  if (header->type == MSG_DISCOVERY) {
+    if (!relayFound) {
+      memcpy(relayAddress, mac, 6);
+      relayFound = true;
     }
+  } else if (header->type == MSG_PING) {
+    pingReceived = true;
   }
 }
 
 void sendDiscoveryResponse() {
-  JsonDocument doc;
-  doc["command"] = "discoveryResponse";
-  doc["deviceType"] = "sensor";
-  doc["device"] = deviceName;
+  DiscoveryResponsePacket packet;
+  memset(&packet, 0, sizeof(packet));
+  packet.type = MSG_DISCOVERY_RESPONSE;
+  strncpy(packet.deviceName, deviceName.c_str(), sizeof(packet.deviceName) - 1);
+  strncpy(packet.deviceType, "sensor", sizeof(packet.deviceType) - 1);
 
-  char buffer[128];
-  serializeJson(doc, buffer);
-
-  esp_now_send(relayAddress, (uint8_t *) buffer, strlen(buffer) + 1);
+  esp_now_send(relayAddress, (uint8_t *)&packet, sizeof(packet));
 }
 
 void sendPong() {
-  JsonDocument doc;
-  doc["command"] = "pong";
-  doc["deviceType"] = "sensor";
-  doc["device"] = deviceName;
-
-  char buffer[128];
-  serializeJson(doc, buffer);
+  PongPacket packet;
+  memset(&packet, 0, sizeof(packet));
+  packet.type = MSG_PONG;
+  strncpy(packet.deviceName, deviceName.c_str(), sizeof(packet.deviceName) - 1);
+  strncpy(packet.deviceType, "sensor", sizeof(packet.deviceType) - 1);
 
   pingReceived = false;
-  esp_now_send(relayAddress, (uint8_t *) buffer, strlen(buffer) + 1);
+  esp_now_send(relayAddress, (uint8_t *)&packet, sizeof(packet));
 }
 
 void sendEvent(int id, int action) {
-  JsonDocument doc;
-  doc["device"] = deviceName;
-  doc["port"] = String(id);
-  doc["data"] = action;
+  DataPacket packet;
+  memset(&packet, 0, sizeof(packet));
+  packet.type = MSG_DATA;
+  strncpy(packet.deviceName, deviceName.c_str(), sizeof(packet.deviceName) - 1);
+  snprintf(packet.port, sizeof(packet.port), "%d", id);
+  packet.value = action;
 
-  char buffer[128];
-  serializeJson(doc, buffer);
-
-  esp_err_t result = esp_now_send(relayAddress, (uint8_t *) buffer, strlen(buffer) + 1);
+  esp_err_t result = esp_now_send(relayAddress, (uint8_t *)&packet, sizeof(packet));
 
   Serial.printf("Sending button ID: %d, event: %d\n", id, action);
 
   if (result == ESP_OK) {
-    Serial.print("Sent: ");
-    Serial.println(buffer);
+    Serial.println("Sent successfully");
   } else {
     Serial.println("Error sending the data");
   }
