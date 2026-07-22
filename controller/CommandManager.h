@@ -4,6 +4,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <mutex>
 #include "commands/LightCommand.h"
 
 class CommandManager {
@@ -14,6 +15,7 @@ public:
 
 private:
   std::map<std::string, std::unique_ptr<LightCommand>> commands;
+  std::mutex mtx;
 };
 
 #endif // COMMAND_MANAGER_H

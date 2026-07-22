@@ -29,6 +29,7 @@ uint8_t relayAddress[6];
 bool relayFound = false;
 esp_now_peer_info_t peerInfo;
 bool pingReceived = false;
+std::mutex pingMtx;
 
 std::deque<Packet> packetQueue;
 const size_t MAX_QUEUE_SIZE = 20;
@@ -44,6 +45,7 @@ void onDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
       relayFound = true;
     }
   } else if (header->type == MSG_PING) {
+    std::lock_guard<std::mutex> lock(pingMtx);
     pingReceived = true;
   } else if (header->type == MSG_COMMAND) {
     // Protect the queue with a mutex since this callback runs in a different task context
@@ -80,12 +82,22 @@ void sendPong() {
   strncpy(packet.deviceName, deviceName.c_str(), sizeof(packet.deviceName) - 1);
   strncpy(packet.deviceType, deviceType.c_str(), sizeof(packet.deviceType) - 1);
 
-  pingReceived = false;
+  {
+    std::lock_guard<std::mutex> lock(pingMtx);
+    pingReceived = false;
+  }
   esp_now_send(relayAddress, (uint8_t *)&packet, sizeof(packet));
 }
 
 void handlePing() {
-  if (pingReceived) {
+  bool shouldPong = false;
+
+  {
+    std::lock_guard<std::mutex> lock(pingMtx);
+    shouldPong = pingReceived;
+  }
+
+  if (shouldPong) {
     sendPong();
   }
 }
@@ -107,6 +119,8 @@ void processIncomingPackets() {
   if (!hasPacket) {
     return;
   }
+
+  Serial.println("GOT PACKET");
 
   if (currentPacket.len < (int)sizeof(CommandPacket)) {
     return;

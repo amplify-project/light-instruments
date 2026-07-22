@@ -13,6 +13,21 @@
 // Set device name here
 String deviceName = "receiver2";
 
+void wirelessTask(void *pvParameters) {
+  for (;;) {
+    handlePing();
+    processIncomingPackets();
+    vTaskDelay(pdMS_TO_TICKS(1));
+  }
+}
+
+void animationTask(void *pvParameters) {
+  for (;;) {
+    commandManager.update();
+    vTaskDelay(pdMS_TO_TICKS(1));
+  }
+}
+
 void setup() {
   Serial.begin(115200);
 
@@ -41,10 +56,12 @@ void setup() {
 
   setupWireless();
   digitalWrite(LED_BUILTIN, LOW);
+
+  xTaskCreatePinnedToCore(wirelessTask, "WirelessTask", 4096, NULL, 1, NULL, 0);
+  xTaskCreatePinnedToCore(animationTask, "AnimationTask", 4096, NULL, 1, NULL, 1);
 }
 
 void loop() {
-  handlePing();
-  processIncomingPackets();
-  commandManager.update();
+  // Tasks are running in background
+  vTaskDelay(pdMS_TO_TICKS(1000));
 }

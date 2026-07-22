@@ -5,6 +5,7 @@ void CommandManager::registerCommand(const std::string& name, std::unique_ptr<Li
 }
 
 void CommandManager::process(const JsonDocument& doc) {
+  std::lock_guard<std::mutex> lock(mtx);
   const char* cmdName = doc["command"];
 
   if (cmdName && commands.count(cmdName)) {
@@ -13,6 +14,7 @@ void CommandManager::process(const JsonDocument& doc) {
 }
 
 void CommandManager::update() {
+  std::lock_guard<std::mutex> lock(mtx);
   bool needsShow = false;
 
   for (int i = 0; i < numLedStrips; i++) {
