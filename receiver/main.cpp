@@ -31,7 +31,13 @@ const unsigned long DISCOVERY_INTERVAL = 10000; // 10 seconds
 unsigned long lastPingTime = 0;
 const unsigned long PING_INTERVAL = 10000;
 
+// ESP32-S3 can handle larger queue size
+#if defined(CONFIG_IDF_TARGET_ESP32S3) || defined(ARDUINO_SEEED_XIAO_ESP32S3)
+const size_t MAX_QUEUE_SIZE = 1000;
+#else
 const size_t MAX_QUEUE_SIZE = 100;
+#endif
+
 char serialBuffer[256];
 size_t serialBufferLen = 0;
 
