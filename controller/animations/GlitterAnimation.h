@@ -15,7 +15,7 @@ public:
         uint32_t now = millis();
         uint32_t elapsed = now - startTime;
 
-        if (elapsed >= duration) {
+        if (duration > 0 && elapsed >= duration) {
             finished = true;
             return false;
         }

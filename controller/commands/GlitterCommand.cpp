@@ -8,9 +8,9 @@ void GlitterCommand::execute(const JsonDocument& doc) {
 
     if (value) {
         int r, g, b;
-        uint32_t duration;
+        uint32_t duration = 0;
 
-        if (sscanf(value, "%d,%d,%d,%u", &r, &g, &b, &duration) == 4) {
+        if (sscanf(value, "%d,%d,%d,%u", &r, &g, &b, &duration) >= 3) {
             CRGB color = CRGB(r, g, b);
 
             for (int i = 0; i < numLedStrips; i++) {
