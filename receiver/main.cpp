@@ -231,20 +231,15 @@ void processIncomingPackets() {
 }
 
 /**
- * @brief Sends a command to an output device through ESP Now. If the device
- * with the given name is not known, nothing happens.
+ * @brief Sends a command to an output device through ESP Now.
  *
  * @param device Name of the device to send the data to
+ * @param mac MAC address of the device
  * @param port Port on the device that the data should be sent to
  * @param command Command to send
  * @param value Parameters for the command
  */
-void sendDeviceCommand(const String& device, const String& port, const String& command, const String& value) {
-  // If the device name is not known, do nothing
-  if (discoveredDevices.count(device) == 0) {
-    return;
-  }
-
+void sendToDevice(const String& device, const uint8_t* mac, const String& port, const String& command, const String& value) {
   // Build JSON data
   JsonDocument doc;
   doc["device"] = device;
@@ -256,15 +251,40 @@ void sendDeviceCommand(const String& device, const String& port, const String& c
   char buffer[256];
   serializeJson(doc, buffer);
 
-  // Get destination MAC address
-  uint8_t* mac = discoveredDevices[device].mac.data();
-
   // Ensure the device is added as a peer
   addPeer(mac);
 
   // Send packet and trigger builtin LED
   esp_now_send(mac, (uint8_t *)buffer, strlen(buffer) + 1);
   triggerActivityIndicator();
+}
+
+/**
+ * @brief Sends a command to an output device through ESP Now. If the device
+ * with the given name is not known, nothing happens. If the device name is
+ * empty, the command is forwarded to all known devices of type 'actuator'.
+ *
+ * @param device Name of the device to send the data to
+ * @param port Port on the device that the data should be sent to
+ * @param command Command to send
+ * @param value Parameters for the command
+ */
+void sendDeviceCommand(const String& device, const String& port, const String& command, const String& value) {
+  if (device.length() == 0) {
+    // Forward to all actuators
+    for (auto const& d : discoveredDevices) {
+      if (d.second.type == "actuator") {
+        sendToDevice(d.first, d.second.mac.data(), port, command, value);
+      }
+    }
+  } else {
+    // If the device name is not known, do nothing
+    if (discoveredDevices.count(device) == 0) {
+      return;
+    }
+
+    sendToDevice(device, discoveredDevices[device].mac.data(), port, command, value);
+  }
 }
 
 /**
