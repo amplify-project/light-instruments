@@ -42,7 +42,7 @@ public:
     }
 
     CRGB scaledColor = color;
-    scaledColor.nscale8_video(brightness);
+    scaledColor.nscale8(brightness);
     fill_solid(ledStrips[stripIndex].leds, ledStrips[stripIndex].numLeds, scaledColor);
 
     return true;

@@ -14,7 +14,7 @@ public:
   bool update(int stripIndex) override {
     uint32_t now = millis();
 
-    if (now - lastUpdate < 10) {
+    if (now - lastUpdate < 5) {
       return false;
     }
 
@@ -23,7 +23,7 @@ public:
     uint16_t b16 = beatsin16(bpm, 0, 65535);
 
     CRGB scaledColor = color;
-    scaledColor.nscale8(b16 >> 8);
+    scaledColor.nscale8_video(b16 >> 8);
     fill_solid(ledStrips[stripIndex].leds, ledStrips[stripIndex].numLeds, scaledColor);
 
     return true;

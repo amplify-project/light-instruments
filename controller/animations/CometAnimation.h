@@ -9,12 +9,19 @@
 class CometAnimation : public Animation {
 public:
   CometAnimation(CRGB color, uint32_t speed)
-    : color(color), speed(speed), lastUpdate(millis() - speed), position(0), finished(false) {}
+    : color(color), speed(speed), lastUpdateLogic(millis()), lastUpdateDither(0), position(0), finished(false) {}
 
   bool update(int stripIndex) override {
     uint32_t now = millis();
-    if (now - lastUpdate >= speed) {
-      lastUpdate = now;
+
+    if (now - lastUpdateDither < 10) {
+      return false;
+    }
+
+    lastUpdateDither = now;
+
+    if (now - lastUpdateLogic >= speed) {
+      lastUpdateLogic = now;
 
       fadeToBlackBy(ledStrips[stripIndex].leds, ledStrips[stripIndex].numLeds, 64);
 
@@ -26,11 +33,9 @@ public:
       } else {
         finished = true;
       }
-
-      return true;
     }
 
-    return false;
+    return true;
   }
 
   bool isFinished() override {
@@ -44,7 +49,8 @@ public:
 private:
   CRGB color;
   uint32_t speed;
-  uint32_t lastUpdate;
+  uint32_t lastUpdateLogic;
+  uint32_t lastUpdateDither;
   float position;
   bool finished;
 };
