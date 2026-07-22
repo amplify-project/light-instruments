@@ -8,6 +8,7 @@
 #include "commands/RainbowCommand.h"
 #include "commands/SetBrightnessCommand.h"
 #include "commands/StopCommand.h"
+#include "commands/BreatheCommand.h"
 
 // Set device name here
 String deviceName = "receiver1";
@@ -36,6 +37,7 @@ void setup() {
   commandManager.registerCommand("rainbow", std::unique_ptr<LightCommand>(new RainbowCommand()));
   commandManager.registerCommand("setBrightness", std::unique_ptr<LightCommand>(new SetBrightnessCommand()));
   commandManager.registerCommand("stop", std::unique_ptr<LightCommand>(new StopCommand()));
+  commandManager.registerCommand("breathe", std::unique_ptr<LightCommand>(new BreatheCommand()));
 
   setupWireless();
   digitalWrite(LED_BUILTIN, LOW);
