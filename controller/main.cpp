@@ -11,7 +11,7 @@
 #include "commands/BreatheCommand.h"
 
 // Set device name here
-String deviceName = "receiver1";
+String deviceName = "receiver2";
 
 void setup() {
   Serial.begin(115200);

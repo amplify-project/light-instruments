@@ -10,7 +10,7 @@
 #include <Arduino.h>
 #include <esp_now.h>
 #include <WiFi.h>
-#include <ArduinoJson.h>
+#include "Protocol.h"
 #include <FastLED.h>
 
 #include "Globals.h"
@@ -21,7 +21,8 @@ String deviceType = "actuator";
 
 struct Packet {
   uint8_t mac[6];
-  JsonDocument doc;
+  uint8_t data[250];
+  int len;
 };
 
 uint8_t relayAddress[6];
@@ -34,58 +35,53 @@ const size_t MAX_QUEUE_SIZE = 20;
 std::mutex queueMtx;
 
 void onDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
-  JsonDocument doc;
-  DeserializationError error = deserializeJson(doc, incomingData, len);
+  if (len < (int)sizeof(ProtocolHeader)) return;
+  ProtocolHeader* header = (ProtocolHeader*)incomingData;
 
-  if (!error) {
-    if (doc["command"] == "discovery") {
-      if (!relayFound) {
-        memcpy(relayAddress, mac, 6);
-        relayFound = true;
-      }
-    } else if (doc["command"] == "ping") {
-      pingReceived = true;
+  if (header->type == MSG_DISCOVERY) {
+    if (!relayFound) {
+      memcpy(relayAddress, mac, 6);
+      relayFound = true;
+    }
+  } else if (header->type == MSG_PING) {
+    pingReceived = true;
+  } else if (header->type == MSG_COMMAND) {
+    // Protect the queue with a mutex since this callback runs in a different task context
+    std::lock_guard<std::mutex> lock(queueMtx);
+
+    if (packetQueue.size() < MAX_QUEUE_SIZE) {
+      // Create a packet structure to store data and MAC
+      Packet p;
+      memcpy(p.mac, mac, 6);
+      p.len = (len > 250) ? 250 : len;
+      memcpy(p.data, incomingData, p.len);
+
+      packetQueue.push_back(p);
     } else {
-      // Protect the queue with a mutex since this callback runs in a different task context
-      std::lock_guard<std::mutex> lock(queueMtx);
-
-      if (packetQueue.size() < MAX_QUEUE_SIZE) {
-        // Create a packet structure to store data and MAC
-        Packet p;
-        memcpy(p.mac, mac, 6);
-        p.doc = std::move(doc); // Use move to avoid copying the JsonDocument
-
-        packetQueue.push_back(std::move(p));
-      } else {
-        Serial.println("Packet queue full, dropping packet");
-      }
+      Serial.println("Packet queue full, dropping packet");
     }
   }
 }
 
 void sendDiscoveryResponse() {
-  JsonDocument doc;
-  doc["command"] = "discoveryResponse";
-  doc["deviceType"] = deviceType;
-  doc["device"] = deviceName;
+  DiscoveryResponsePacket packet;
+  memset(&packet, 0, sizeof(packet));
+  packet.type = MSG_DISCOVERY_RESPONSE;
+  strncpy(packet.deviceName, deviceName.c_str(), sizeof(packet.deviceName) - 1);
+  strncpy(packet.deviceType, deviceType.c_str(), sizeof(packet.deviceType) - 1);
 
-  char buffer[128];
-  serializeJson(doc, buffer);
-
-  esp_now_send(relayAddress, (uint8_t *) buffer, strlen(buffer) + 1);
+  esp_now_send(relayAddress, (uint8_t *)&packet, sizeof(packet));
 }
 
 void sendPong() {
-  JsonDocument doc;
-  doc["command"] = "pong";
-  doc["deviceType"] = deviceType;
-  doc["device"] = deviceName;
-
-  char buffer[128];
-  serializeJson(doc, buffer);
+  PongPacket packet;
+  memset(&packet, 0, sizeof(packet));
+  packet.type = MSG_PONG;
+  strncpy(packet.deviceName, deviceName.c_str(), sizeof(packet.deviceName) - 1);
+  strncpy(packet.deviceType, deviceType.c_str(), sizeof(packet.deviceType) - 1);
 
   pingReceived = false;
-  esp_now_send(relayAddress, (uint8_t *)buffer, strlen(buffer) + 1);
+  esp_now_send(relayAddress, (uint8_t *)&packet, sizeof(packet));
 }
 
 void handlePing() {
@@ -102,8 +98,8 @@ void processIncomingPackets() {
     std::lock_guard<std::mutex> lock(queueMtx);
 
     if (!packetQueue.empty()) {
-      currentPacket = std::move(packetQueue.front()); // Move out of the queue
-      packetQueue.pop_front(); // Efficient removal from deque
+      currentPacket = packetQueue.front();
+      packetQueue.pop_front();
       hasPacket = true;
     }
   }
@@ -112,16 +108,22 @@ void processIncomingPackets() {
     return;
   }
 
-  // Packet is a command packet if the key 'command' is set
-  if (!currentPacket.doc["command"].isNull()) {
-    const char* command = currentPacket.doc["command"];
-    const char* port = currentPacket.doc["port"];
-    const char* data = currentPacket.doc["data"];
-
-    Serial.printf("%s %s %s\n", command, port, data);
-
-    commandManager.process(currentPacket.doc);
+  if (currentPacket.len < (int)sizeof(CommandPacket)) {
+    return;
   }
+
+  CommandPacket* p = (CommandPacket*)currentPacket.data;
+
+  Serial.printf("%s %s %s\n", p->command, p->port, p->value);
+
+  // For compatibility with existing commands, we create a temporary JsonDocument
+  JsonDocument doc;
+  doc["command"] = p->command;
+  doc["port"] = p->port;
+  doc["data"] = p->value;
+  doc["device"] = p->deviceName;
+
+  commandManager.process(doc);
 }
 
 void flashBuiltinLed() {
