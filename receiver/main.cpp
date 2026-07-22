@@ -24,6 +24,7 @@ struct DeviceInfo {
 };
 
 std::map<String, DeviceInfo> discoveredDevices;
+std::mutex devicesMtx;
 unsigned long lastDiscoveryTime = 0;
 const unsigned long DISCOVERY_INTERVAL = 10000; // 10 seconds
 
@@ -31,7 +32,8 @@ unsigned long lastPingTime = 0;
 const unsigned long PING_INTERVAL = 10000;
 
 const size_t MAX_QUEUE_SIZE = 100;
-String serialBuffer = "";
+char serialBuffer[256];
+size_t serialBufferLen = 0;
 
 volatile unsigned long ledFlashTime = 0;
 const int FLASH_DURATION = 50;
@@ -143,6 +145,7 @@ void handlePingInterval() {
   if (millis() - lastPingTime > PING_INTERVAL) {
     lastPingTime = millis();
 
+    std::lock_guard<std::mutex> lock(devicesMtx);
     for (auto const& device : discoveredDevices) {
       sendPing(device.second.mac.data());
     }
@@ -187,7 +190,10 @@ void processIncomingPackets() {
       memcpy(mac.data(), currentPacket.mac, 6);
 
       Serial.printf("MSG,discovery,%s,%s\n", p->deviceType, p->deviceName);
-      discoveredDevices[p->deviceName] = { mac, p->deviceType };
+      {
+        std::lock_guard<std::mutex> lock(devicesMtx);
+        discoveredDevices[p->deviceName] = { mac, p->deviceType };
+      }
       break;
     }
     case MSG_PONG: {
@@ -219,15 +225,15 @@ void processIncomingPackets() {
  * @param command Command to send
  * @param value Parameters for the command
  */
-void sendToDevice(const String& device, const uint8_t* mac, const String& port, const String& command, const String& value) {
+void sendToDevice(const char* device, const uint8_t* mac, const char* port, const char* command, const char* value) {
   CommandPacket packet;
 
   memset(&packet, 0, sizeof(packet));
   packet.type = MSG_COMMAND;
-  strncpy(packet.deviceName, device.c_str(), sizeof(packet.deviceName) - 1);
-  strncpy(packet.port, port.c_str(), sizeof(packet.port) - 1);
-  strncpy(packet.command, command.c_str(), sizeof(packet.command) - 1);
-  strncpy(packet.value, value.c_str(), sizeof(packet.value) - 1);
+  strncpy(packet.deviceName, device, sizeof(packet.deviceName) - 1);
+  strncpy(packet.port, port, sizeof(packet.port) - 1);
+  strncpy(packet.command, command, sizeof(packet.command) - 1);
+  strncpy(packet.value, value, sizeof(packet.value) - 1);
 
   // Ensure the device is added as a peer
   addPeer(mac);
@@ -247,15 +253,17 @@ void sendToDevice(const String& device, const uint8_t* mac, const String& port, 
  * @param command Command to send
  * @param value Parameters for the command
  */
-void sendDeviceCommand(const String& device, const String& port, const String& command, const String& value) {
-  if (device.length() == 0) {
+void sendDeviceCommand(const char* device, const char* port, const char* command, const char* value) {
+  if (device == nullptr || strlen(device) == 0) {
     // Forward to all actuators
+    std::lock_guard<std::mutex> lock(devicesMtx);
     for (auto const& d : discoveredDevices) {
       if (d.second.type == "actuator") {
-        sendToDevice(d.first, d.second.mac.data(), port, command, value);
+        sendToDevice(d.first.c_str(), d.second.mac.data(), port, command, value);
       }
     }
   } else {
+    std::lock_guard<std::mutex> lock(devicesMtx);
     // If the device name is not known, do nothing
     if (discoveredDevices.count(device) == 0) {
       return;
@@ -270,30 +278,27 @@ void sendDeviceCommand(const String& device, const String& port, const String& c
  *
  * @param line The command line to process
  */
-void handleSerialCommand(String line) {
-  line.trim();
-
-  // Return if the line is empty
-  if (line.length() == 0) {
-    return;
-  }
-
+void handleSerialCommand(char* line) {
   // Expected format: device,port,command,value
-  int firstComma = line.indexOf(',');
-  int secondComma = line.indexOf(',', firstComma + 1);
-  int thirdComma = line.indexOf(',', secondComma + 1);
+  // We manually find the first three commas to allow the 'value' field to contain commas
 
-  // Make sure received data has the right format
-  if (firstComma != -1 && secondComma != -1 && thirdComma != -1) {
-    // Extract command parameters
-    String device = line.substring(0, firstComma);
-    String port = line.substring(firstComma + 1, secondComma);
-    String command = line.substring(secondComma + 1, thirdComma);
-    String value = line.substring(thirdComma + 1);
+  char* device = line;
+  char* comma1 = strchr(device, ',');
+  if (!comma1) return;
+  *comma1 = '\0';
+  char* port = comma1 + 1;
 
-    // Send command to device
-    sendDeviceCommand(device, port, command, value);
-  }
+  char* comma2 = strchr(port, ',');
+  if (!comma2) return;
+  *comma2 = '\0';
+  char* command = comma2 + 1;
+
+  char* comma3 = strchr(command, ',');
+  if (!comma3) return;
+  *comma3 = '\0';
+  char* value = comma3 + 1;
+
+  sendDeviceCommand(device, port, command, value);
 }
 
 /**
@@ -304,11 +309,29 @@ void processSerialInput() {
     char c = Serial.read();
 
     if (c == '\n') {
+      serialBuffer[serialBufferLen] = '\0';
       handleSerialCommand(serialBuffer);
-      serialBuffer = "";
-    } else if (c != '\r') {
-      serialBuffer += c;
+      serialBufferLen = 0;
+    } else if (c != '\r' && serialBufferLen < sizeof(serialBuffer) - 1) {
+      serialBuffer[serialBufferLen++] = c;
     }
+  }
+}
+
+void serialTask(void *pvParameters) {
+  for (;;) {
+    processSerialInput();
+    vTaskDelay(pdMS_TO_TICKS(1));
+  }
+}
+
+void logicTask(void *pvParameters) {
+  for (;;) {
+    processIncomingPackets();
+    handleDiscoveryInterval();
+    handlePingInterval();
+    updateActivityIndicator();
+    vTaskDelay(pdMS_TO_TICKS(1));
   }
 }
 
@@ -351,12 +374,12 @@ void setup() {
   lastDiscoveryTime = millis();
 
   lastPingTime = millis();
+
+  xTaskCreatePinnedToCore(serialTask, "SerialTask", 4096, NULL, 1, NULL, 0);
+  xTaskCreatePinnedToCore(logicTask, "LogicTask", 4096, NULL, 1, NULL, 1);
 }
 
 void loop() {
-  updateActivityIndicator();
-  handleDiscoveryInterval();
-  processIncomingPackets();
-  processSerialInput();
-  handlePingInterval();
+  // Tasks are running in background
+  vTaskDelay(pdMS_TO_TICKS(1000));
 }
