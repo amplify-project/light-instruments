@@ -52,6 +52,10 @@ public:
         return finished;
     }
 
+    void setColor(CRGB newColor) override {
+        color = newColor;
+    }
+
 private:
     CRGB color;
     uint16_t attack, decay, sustain, release;

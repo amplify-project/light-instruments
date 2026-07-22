@@ -11,10 +11,15 @@ void SetCommand::execute(const JsonDocument& doc) {
             int r, g, b, brightness;
 
             if (sscanf(value, "%d,%d,%d,%d", &r, &g, &b, &brightness) == 4) {
-                ledStrips[i].activeAnimation.reset();
-                fill_solid(ledStrips[i].leds, ledStrips[i].numLeds, CRGB(r, g, b));
-
+                CRGB newColor(r, g, b);
                 ledStrips[i].brightness = (uint8_t)brightness;
+
+                if (ledStrips[i].activeAnimation) {
+                    ledStrips[i].activeAnimation->setColor(newColor);
+                } else {
+                    fill_solid(ledStrips[i].leds, ledStrips[i].numLeds, newColor);
+                }
+
                 showStrip(i);
             }
         }

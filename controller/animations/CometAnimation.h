@@ -37,6 +37,10 @@ public:
         return finished;
     }
 
+    void setColor(CRGB newColor) override {
+        color = newColor;
+    }
+
 private:
     CRGB color;
     uint32_t speed;
