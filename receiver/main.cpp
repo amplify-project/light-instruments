@@ -171,9 +171,11 @@ void processIncomingPackets() {
 
     {
       std::lock_guard<std::mutex> lock(queueMtx);
+
       if (packetQueue.empty()) {
         break;
       }
+
       currentPacket = packetQueue.front();
       packetQueue.pop_front();
       currentQueueSize = packetQueue.size();
@@ -263,6 +265,7 @@ void sendDeviceCommand(const char* device, const char* port, const char* command
   if (device == nullptr || strlen(device) == 0) {
     // Forward to all actuators
     std::lock_guard<std::mutex> lock(devicesMtx);
+
     for (auto const& d : discoveredDevices) {
       if (d.second.type == "actuator") {
         sendToDevice(d.first.c_str(), d.second.mac.data(), port, command, value);
@@ -270,6 +273,7 @@ void sendDeviceCommand(const char* device, const char* port, const char* command
     }
   } else {
     std::lock_guard<std::mutex> lock(devicesMtx);
+
     // If the device name is not known, do nothing
     if (discoveredDevices.count(device) == 0) {
       return;
@@ -290,6 +294,7 @@ void handleSerialCommand(char* line) {
 
   char* device = line;
   char* comma1 = strchr(device, ',');
+
   if (!comma1) return;
   *comma1 = '\0';
   char* port = comma1 + 1;
