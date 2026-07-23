@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <esp_now.h>
-#include <vector>
+#include <deque>
 #include <mutex>
 #include <map>
 #include <array>
@@ -14,7 +14,7 @@ struct Packet {
   int len;
 };
 
-std::vector<Packet> packetQueue;
+std::deque<Packet> packetQueue;
 std::mutex queueMtx;
 uint8_t broadcastAddress[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
@@ -164,61 +164,61 @@ void handlePingInterval() {
  * forwarded through the serial port.
  */
 void processIncomingPackets() {
-  Packet currentPacket;
-  bool hasPacket = false;
+  while (true) {
+    Packet currentPacket;
+    size_t currentQueueSize = 0;
+    bool hasPacket = false;
 
-  {
-    std::lock_guard<std::mutex> lock(queueMtx);
-
-    if (!packetQueue.empty()) {
+    {
+      std::lock_guard<std::mutex> lock(queueMtx);
+      if (packetQueue.empty()) {
+        break;
+      }
       currentPacket = packetQueue.front();
-      packetQueue.erase(packetQueue.begin());
+      packetQueue.pop_front();
+      currentQueueSize = packetQueue.size();
       hasPacket = true;
     }
-  }
 
-  if (!hasPacket) {
-    return;
-  }
+    if (currentPacket.len < (int)sizeof(ProtocolHeader)) {
+      continue;
+    }
 
-  if (currentPacket.len < (int)sizeof(ProtocolHeader)) {
-    return;
-  }
+    ProtocolHeader* header = (ProtocolHeader*)currentPacket.data;
 
-  ProtocolHeader* header = (ProtocolHeader*)currentPacket.data;
+    switch (header->type) {
+      case MSG_DISCOVERY_RESPONSE: {
+        if (currentPacket.len < (int)sizeof(DiscoveryResponsePacket)) continue;
+        DiscoveryResponsePacket* p = (DiscoveryResponsePacket*)currentPacket.data;
 
-  switch (header->type) {
-    case MSG_DISCOVERY_RESPONSE: {
-      if (currentPacket.len < (int)sizeof(DiscoveryResponsePacket)) return;
-      DiscoveryResponsePacket* p = (DiscoveryResponsePacket*)currentPacket.data;
+        std::array<uint8_t, 6> mac;
+        memcpy(mac.data(), currentPacket.mac, 6);
 
-      std::array<uint8_t, 6> mac;
-      memcpy(mac.data(), currentPacket.mac, 6);
-
-      Serial.printf("MSG,discovery,%s,%s\n", p->deviceType, p->deviceName);
-      {
-        std::lock_guard<std::mutex> lock(devicesMtx);
-        discoveredDevices[p->deviceName] = { mac, p->deviceType };
+        Serial.printf("MSG,discovery,%s,%s\n", p->deviceType, p->deviceName);
+        {
+          std::lock_guard<std::mutex> lock(devicesMtx);
+          discoveredDevices[p->deviceName] = { mac, p->deviceType };
+        }
+        break;
       }
-      break;
-    }
-    case MSG_PONG: {
-      if (currentPacket.len < (int)sizeof(PongPacket)) return;
-      PongPacket* p = (PongPacket*)currentPacket.data;
+      case MSG_PONG: {
+        if (currentPacket.len < (int)sizeof(PongPacket)) continue;
+        PongPacket* p = (PongPacket*)currentPacket.data;
 
-      Serial.printf("MSG,pong,%s,%s\n", p->deviceType, p->deviceName);
-      Serial.printf("MSG,queuelen,%d\n", packetQueue.size());
-      break;
-    }
-    case MSG_DATA: {
-      if (currentPacket.len < (int)sizeof(DataPacket)) return;
-      DataPacket* p = (DataPacket*)currentPacket.data;
+        Serial.printf("MSG,pong,%s,%s\n", p->deviceType, p->deviceName);
+        Serial.printf("MSG,queuelen,%d\n", currentQueueSize);
+        break;
+      }
+      case MSG_DATA: {
+        if (currentPacket.len < (int)sizeof(DataPacket)) continue;
+        DataPacket* p = (DataPacket*)currentPacket.data;
 
-      Serial.printf("DATA,%s,%s,%d\n", p->deviceName, p->port, p->value);
-      break;
+        Serial.printf("DATA,%s,%s,%d\n", p->deviceName, p->port, p->value);
+        break;
+      }
+      default:
+        break;
     }
-    default:
-      break;
   }
 }
 
