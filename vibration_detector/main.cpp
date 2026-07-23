@@ -1,11 +1,12 @@
 #include <esp_now.h>
 #include <WiFi.h>
+#include <Preferences.h>
 #include "Protocol.h"
 
 uint8_t relayAddress[6];
 bool relayFound = false;
 esp_now_peer_info_t peerInfo;
-String deviceName = "drum_small";
+String deviceName = "";
 
 bool pingReceived = false;
 
@@ -63,8 +64,60 @@ void sendEvent(int val) {
   esp_now_send(relayAddress, (uint8_t *)&packet, sizeof(packet));
 }
 
+bool initDeviceName() {
+  Preferences prefs;
+  prefs.begin("system", true);
+  deviceName = prefs.getString("name", "");
+  prefs.end();
+
+  return (deviceName != "");
+}
+
+void saveDeviceName(String name) {
+  Preferences prefs;
+
+  prefs.begin("system", false);
+  prefs.putString("name", name);
+  prefs.end();
+
+  deviceName = name;
+}
+
+bool listenForDeviceName() {
+  if (Serial.available()) {
+    String input = Serial.readStringUntil('\n');
+    input.trim();
+
+    if (input.startsWith("name=")) {
+      String newName = input.substring(5);
+
+      if (newName.length() > 0) {
+        saveDeviceName(newName);
+
+        Serial.print("Device name updated and saved to flash: ");
+        Serial.println(deviceName);
+
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
 void setup() {
   Serial.begin(115200);
+
+  if (!initDeviceName()) {
+    Serial.println("No persistent name found. Waiting for name=... command via Serial.");
+
+    while (!listenForDeviceName()) {
+      delay(100);
+    }
+  }
+
+  Serial.print("Device Name: ");
+  Serial.println(deviceName);
 
   pinMode(LED_BUILTIN, OUTPUT);
 

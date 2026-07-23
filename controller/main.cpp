@@ -11,9 +11,6 @@
 #include "commands/BreatheCommand.h"
 #include "commands/FireCommand.h"
 
-// Set device name here, leave empty to use flash memory or unique MAC name
-String manualDeviceName = "";
-
 void wirelessTask(void *pvParameters) {
   for (;;) {
     handlePing();
@@ -38,16 +35,8 @@ void displayTask(void *pvParameters) {
 
 void setup() {
   Serial.begin(115200);
-  bool isNameSet = false;
 
-  if (manualDeviceName != "") {
-    deviceName = manualDeviceName;
-    isNameSet = true;
-  } else {
-    isNameSet = initDeviceName();
-  }
-
-  if (!isNameSet) {
+  if (!initDeviceName()) {
     Serial.println("No persistent name found. Waiting for name=... command via Serial.");
 
     while (!listenForDeviceName()) {
