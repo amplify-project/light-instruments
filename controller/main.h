@@ -120,15 +120,11 @@ void processIncomingPackets() {
     return;
   }
 
-  Serial.println("GOT PACKET");
-
   if (currentPacket.len < (int)sizeof(CommandPacket)) {
     return;
   }
 
   CommandPacket* p = (CommandPacket*)currentPacket.data;
-
-  Serial.printf("%s %s %s\n", p->command, p->port, p->value);
 
   // For compatibility with existing commands, we create a temporary JsonDocument
   JsonDocument doc;

@@ -4,6 +4,7 @@
 
 std::vector<LedStrip> ledStrips;
 CommandManager commandManager;
+TaskHandle_t displayTaskHandle = NULL;
 
 void showStrip(int index) {
   if (index >= 0 && index < numLedStrips) {
@@ -14,6 +15,12 @@ void showStrip(int index) {
 void showAll() {
   for (int i = 0; i < numLedStrips; i++) {
     ledStrips[i].show();
+  }
+}
+
+void triggerDisplay() {
+  if (displayTaskHandle != NULL) {
+    xTaskNotifyGive(displayTaskHandle);
   }
 }
 

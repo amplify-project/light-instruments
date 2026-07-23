@@ -28,6 +28,13 @@ void animationTask(void *pvParameters) {
   }
 }
 
+void displayTask(void *pvParameters) {
+  for (;;) {
+    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+    showAll();
+  }
+}
+
 void setup() {
   Serial.begin(115200);
 
@@ -57,8 +64,9 @@ void setup() {
   setupWireless();
   digitalWrite(LED_BUILTIN, LOW);
 
-  xTaskCreatePinnedToCore(wirelessTask, "WirelessTask", 4096, NULL, 1, NULL, 0);
+  xTaskCreatePinnedToCore(wirelessTask, "WirelessTask", 4096, NULL, 2, NULL, 0);
   xTaskCreatePinnedToCore(animationTask, "AnimationTask", 4096, NULL, 1, NULL, 1);
+  xTaskCreatePinnedToCore(displayTask, "DisplayTask", 4096, NULL, 1, &displayTaskHandle, 1);
 }
 
 void loop() {

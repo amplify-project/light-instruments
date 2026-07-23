@@ -14,23 +14,25 @@ void CommandManager::process(const JsonDocument& doc) {
 }
 
 void CommandManager::update() {
-  std::lock_guard<std::mutex> lock(mtx);
   bool needsShow = false;
 
-  for (int i = 0; i < numLedStrips; i++) {
-    if (ledStrips[i].activeAnimation) {
-      if (ledStrips[i].activeAnimation->update(i)) {
-        needsShow = true;
-      }
+  {
+    std::lock_guard<std::mutex> lock(mtx);
+    for (int i = 0; i < numLedStrips; i++) {
+      if (ledStrips[i].activeAnimation) {
+        if (ledStrips[i].activeAnimation->update(i)) {
+          needsShow = true;
+        }
 
-      if (ledStrips[i].activeAnimation && ledStrips[i].activeAnimation->isFinished()) {
-        ledStrips[i].activeAnimation.reset();
-        needsShow = true;
+        if (ledStrips[i].activeAnimation && ledStrips[i].activeAnimation->isFinished()) {
+          ledStrips[i].activeAnimation.reset();
+          needsShow = true;
+        }
       }
     }
   }
 
   if (needsShow) {
-    showAll();
+    triggerDisplay();
   }
 }
