@@ -94,3 +94,30 @@ Starts an organic fire flicker effect.
 - **Parameters**: `r,g,b,intensity`
 - **Behavior**: Simulates a flickering fire using a heat-map algorithm based on
   the specified color and spark intensity (0-255).
+---
+
+## Device Configuration
+
+The device name is used to target specific controllers in a multi-device setup. You can set a persistent name via the USB Serial connection.
+
+### Setting the Device Name
+
+A Python script `set_name.py` is provided in the parent directory to simplify this process.
+
+**Requirements**:
+- Python 3
+- `pyserial` library (`pip install pyserial`)
+
+**Usage**:
+```bash
+# Set a name (auto-detects port if only one is connected)
+./set_name.py my-device-name
+
+# Specify a port
+./set_name.py my-device-name -p /dev/ttyUSB0
+
+# List available ports
+./set_name.py --list
+```
+
+The name is saved to the device's non-volatile storage (NVS) and will persist across reboots and firmware updates.
