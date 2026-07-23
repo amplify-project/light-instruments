@@ -31,6 +31,17 @@ Updates the base brightness of the targeted port.
 - **Behavior**: Adjusts the intensity of the LEDs without interrupting any
   currently running animation.
 
+### `setLED`
+
+Sets a specific range of LEDs to a certain color.
+
+- **Parameters**: `r,g,b,offset,numleds`
+- **Behavior**: Sets `numleds` starting from `offset` to the specified RGB color.
+  This command **interrupts and stops** any currently running animation on the
+  targeted port to prevent the animation from overwriting the manual changes.
+  Values for `r,g,b` are 0-255. `offset` and `numleds` are clamped to the
+  strip's length.
+
 ### `stop`
 
 Stops all activity on the targeted port.

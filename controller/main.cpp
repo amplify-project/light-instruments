@@ -10,6 +10,7 @@
 #include "commands/StopCommand.h"
 #include "commands/BreatheCommand.h"
 #include "commands/FireCommand.h"
+#include "commands/SetLEDCommand.h"
 
 void wirelessTask(void *pvParameters) {
   for (;;) {
@@ -71,6 +72,7 @@ void setup() {
   commandManager.registerCommand("stop", std::unique_ptr<LightCommand>(new StopCommand()));
   commandManager.registerCommand("breathe", std::unique_ptr<LightCommand>(new BreatheCommand()));
   commandManager.registerCommand("fire", std::unique_ptr<LightCommand>(new FireCommand()));
+  commandManager.registerCommand("setLED", std::unique_ptr<LightCommand>(new SetLEDCommand()));
 
   setupWireless();
   digitalWrite(LED_BUILTIN, LOW);
