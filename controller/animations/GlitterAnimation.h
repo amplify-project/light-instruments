@@ -20,7 +20,7 @@ public:
       return false;
     }
 
-    if (now - lastUpdate >= 20) {
+    if (now - lastUpdate >= 10) {
       lastUpdate = now;
       fadeToBlackBy(ledStrips[stripIndex].leds, ledStrips[stripIndex].numLeds, 32);
 

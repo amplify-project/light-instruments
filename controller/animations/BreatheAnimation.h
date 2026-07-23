@@ -14,7 +14,7 @@ public:
   bool update(int stripIndex) override {
     uint32_t now = millis();
 
-    if (now - lastUpdate < 5) {
+    if (now - lastUpdate < 10) {
       return false;
     }
 
