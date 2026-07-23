@@ -16,7 +16,7 @@
 #include "CommandManager.h"
 #include "Protocol.h"
 
-extern String deviceName;
+String deviceName = "";
 String deviceType = "actuator";
 
 struct Packet {

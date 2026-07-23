@@ -11,8 +11,8 @@
 #include "commands/BreatheCommand.h"
 #include "commands/FireCommand.h"
 
-// Set device name here
-String deviceName = "receiver2";
+// Set device name here, leave empty to use flash memory or unique MAC name
+String manualDeviceName = "";
 
 void wirelessTask(void *pvParameters) {
   for (;;) {
@@ -38,6 +38,25 @@ void displayTask(void *pvParameters) {
 
 void setup() {
   Serial.begin(115200);
+  bool isNameSet = false;
+
+  if (manualDeviceName != "") {
+    deviceName = manualDeviceName;
+    isNameSet = true;
+  } else {
+    isNameSet = initDeviceName();
+  }
+
+  if (!isNameSet) {
+    Serial.println("No persistent name found. Waiting for name=... command via Serial.");
+
+    while (!listenForDeviceName()) {
+      vTaskDelay(pdMS_TO_TICKS(100));
+    }
+  }
+
+  Serial.print("Device Name: ");
+  Serial.println(deviceName);
 
   pinMode(LED_BUILTIN, OUTPUT);
   flashBuiltinLed();
@@ -48,6 +67,7 @@ void setup() {
   for (int i=0; i<numLedStrips; i++) {
     ledStrips[i].brightness = 50;
   }
+
   FastLED.clear();
   showAll();
 
@@ -72,6 +92,5 @@ void setup() {
 }
 
 void loop() {
-  // Tasks are running in background
-  vTaskDelay(pdMS_TO_TICKS(1000));
+  vTaskDelay(pdMS_TO_TICKS(100));
 }

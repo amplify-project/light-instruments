@@ -6,6 +6,12 @@ void CommandManager::registerCommand(const std::string& name, std::unique_ptr<Li
 
 void CommandManager::process(const CommandPacket& packet) {
   std::lock_guard<std::mutex> lock(mtx);
+
+  // Filter by device name: execute if name matches OR if name in packet is empty (broadcast)
+  if (packet.deviceName[0] != '\0' && strcmp(packet.deviceName, deviceName.c_str()) != 0) {
+    return;
+  }
+
   const char* cmdName = packet.command;
 
   if (cmdName && commands.count(cmdName)) {
