@@ -2,20 +2,20 @@
 #define LIGHT_COMMAND_H
 
 #include "../Globals.h"
-#include <ArduinoJson.h>
+#include "../Protocol.h"
 #include <FastLED.h>
 #include <string>
 
 class LightCommand {
 public:
   virtual ~LightCommand() = default;
-  virtual void execute(const JsonDocument& doc) = 0;
+  virtual void execute(const CommandPacket& packet) = 0;
   virtual void update() {}
 
 protected:
-  bool isTargetPort(const JsonDocument& doc, const std::string& target) {
-    const char* port = doc["port"];
-    return port == nullptr || port[0] == '\0' || target == port;
+  bool isTargetPort(const CommandPacket& packet, const std::string& target) {
+    const char* port = packet.port;
+    return port[0] == '\0' || target == port;
   }
 };
 

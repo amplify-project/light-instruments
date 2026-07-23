@@ -2,12 +2,12 @@
 #include "../Globals.h"
 #include <Arduino.h>
 
-void SetColorCommand::execute(const JsonDocument& doc) {
-  const char* value = doc["data"];
+void SetColorCommand::execute(const CommandPacket& packet) {
+  const char* value = packet.value;
   if (!value) return;
 
   for (int i = 0; i < numLedStrips; i++) {
-    if (isTargetPort(doc, ledStrips[i].name)) {
+    if (isTargetPort(packet, ledStrips[i].name)) {
       int r, g, b;
 
       if (sscanf(value, "%d,%d,%d", &r, &g, &b) == 3) {

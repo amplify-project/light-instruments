@@ -126,14 +126,7 @@ void processIncomingPackets() {
 
   CommandPacket* p = (CommandPacket*)currentPacket.data;
 
-  // For compatibility with existing commands, we create a temporary JsonDocument
-  JsonDocument doc;
-  doc["command"] = p->command;
-  doc["port"] = p->port;
-  doc["data"] = p->value;
-  doc["device"] = p->deviceName;
-
-  commandManager.process(doc);
+  commandManager.process(*p);
 }
 
 void flashBuiltinLed() {

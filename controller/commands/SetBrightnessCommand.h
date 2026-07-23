@@ -5,7 +5,7 @@
 
 class SetBrightnessCommand : public LightCommand {
 public:
-  void execute(const JsonDocument& doc) override;
+  void execute(const CommandPacket& packet) override;
 };
 
 #endif // SET_BRIGHTNESS_COMMAND_H

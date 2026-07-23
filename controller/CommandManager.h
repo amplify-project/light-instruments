@@ -6,11 +6,12 @@
 #include <string>
 #include <mutex>
 #include "commands/LightCommand.h"
+#include "Protocol.h"
 
 class CommandManager {
 public:
   void registerCommand(const std::string& name, std::unique_ptr<LightCommand> cmd);
-  void process(const JsonDocument& doc);
+  void process(const CommandPacket& packet);
   void update();
 
 private:

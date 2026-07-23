@@ -4,12 +4,12 @@ void CommandManager::registerCommand(const std::string& name, std::unique_ptr<Li
   commands[name] = std::move(cmd);
 }
 
-void CommandManager::process(const JsonDocument& doc) {
+void CommandManager::process(const CommandPacket& packet) {
   std::lock_guard<std::mutex> lock(mtx);
-  const char* cmdName = doc["command"];
+  const char* cmdName = packet.command;
 
   if (cmdName && commands.count(cmdName)) {
-    commands[cmdName]->execute(doc);
+    commands[cmdName]->execute(packet);
   }
 }
 

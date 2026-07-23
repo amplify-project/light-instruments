@@ -2,8 +2,8 @@
 #include "../Globals.h"
 #include <Arduino.h>
 
-void FireCommand::execute(const JsonDocument& doc) {
-  const char* value = doc["data"];
+void FireCommand::execute(const CommandPacket& packet) {
+  const char* value = packet.value;
 
   if (value) {
     int r, g, b, intensity;
@@ -12,7 +12,7 @@ void FireCommand::execute(const JsonDocument& doc) {
       CRGB color = CRGB(r, g, b);
 
       for (int i = 0; i < numLedStrips; i++) {
-        if (isTargetPort(doc, ledStrips[i].name)) {
+        if (isTargetPort(packet, ledStrips[i].name)) {
           ledStrips[i].activeAnimation = std::unique_ptr<Animation>(new FireAnimation(color, (uint8_t)intensity));
         }
       }

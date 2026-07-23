@@ -3,8 +3,8 @@
 #include <Arduino.h>
 #include <cstring>
 
-void GlitterCommand::execute(const JsonDocument& doc) {
-  const char* value = doc["data"];
+void GlitterCommand::execute(const CommandPacket& packet) {
+  const char* value = packet.value;
 
   if (value) {
     int r, g, b;
@@ -14,7 +14,7 @@ void GlitterCommand::execute(const JsonDocument& doc) {
       CRGB color = CRGB(r, g, b);
 
       for (int i = 0; i < numLedStrips; i++) {
-        if (isTargetPort(doc, ledStrips[i].name)) {
+        if (isTargetPort(packet, ledStrips[i].name)) {
           ledStrips[i].activeAnimation = std::unique_ptr<Animation>(new GlitterAnimation(color, duration));
         }
       }

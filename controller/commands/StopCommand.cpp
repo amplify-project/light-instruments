@@ -2,9 +2,9 @@
 #include "../Globals.h"
 #include <Arduino.h>
 
-void StopCommand::execute(const JsonDocument& doc) {
+void StopCommand::execute(const CommandPacket& packet) {
   for (int i = 0; i < numLedStrips; i++) {
-    if (isTargetPort(doc, ledStrips[i].name)) {
+    if (isTargetPort(packet, ledStrips[i].name)) {
       // Stop any active animation
       ledStrips[i].activeAnimation.reset();
       
