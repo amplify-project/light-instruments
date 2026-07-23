@@ -1,6 +1,7 @@
+#include <Arduino.h>
+
 #include "Globals.h"
 #include "CommandManager.h"
-#include <Arduino.h>
 
 std::vector<LedStrip> ledStrips;
 CommandManager commandManager;

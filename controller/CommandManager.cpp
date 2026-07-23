@@ -18,6 +18,7 @@ void CommandManager::update() {
 
   {
     std::lock_guard<std::mutex> lock(mtx);
+
     for (int i = 0; i < numLedStrips; i++) {
       if (ledStrips[i].activeAnimation) {
         if (ledStrips[i].activeAnimation->update(i)) {

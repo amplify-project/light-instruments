@@ -1,10 +1,11 @@
 #ifndef COMET_ANIMATION_H
 #define COMET_ANIMATION_H
 
-#include "Animation.h"
-#include "../Globals.h"
 #include <Arduino.h>
 #include <FastLED.h>
+
+#include "Animation.h"
+#include "../Globals.h"
 
 class CometAnimation : public Animation {
 public:

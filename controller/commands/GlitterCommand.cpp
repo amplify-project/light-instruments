@@ -1,7 +1,8 @@
-#include "GlitterCommand.h"
-#include "../Globals.h"
 #include <Arduino.h>
 #include <cstring>
+
+#include "GlitterCommand.h"
+#include "../Globals.h"
 
 void GlitterCommand::execute(const CommandPacket& packet) {
   const char* value = packet.value;

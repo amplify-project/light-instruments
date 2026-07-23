@@ -1,11 +1,12 @@
 #ifndef FIRE_ANIMATION_H
 #define FIRE_ANIMATION_H
 
-#include "Animation.h"
-#include "../Globals.h"
 #include <Arduino.h>
 #include <FastLED.h>
 #include <vector>
+
+#include "Animation.h"
+#include "../Globals.h"
 
 class FireAnimation : public Animation {
 public:

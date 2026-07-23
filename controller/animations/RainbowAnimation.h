@@ -1,10 +1,11 @@
 #ifndef RAINBOW_ANIMATION_H
 #define RAINBOW_ANIMATION_H
 
-#include "Animation.h"
-#include "../Globals.h"
 #include <Arduino.h>
 #include <FastLED.h>
+
+#include "Animation.h"
+#include "../Globals.h"
 
 class RainbowAnimation : public Animation {
 public:

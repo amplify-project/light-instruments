@@ -1,10 +1,11 @@
 #ifndef BREATHE_ANIMATION_H
 #define BREATHE_ANIMATION_H
 
-#include "Animation.h"
-#include "../Globals.h"
 #include <Arduino.h>
 #include <FastLED.h>
+
+#include "Animation.h"
+#include "../Globals.h"
 
 class BreatheAnimation : public Animation {
 public:

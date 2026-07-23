@@ -1,6 +1,7 @@
+#include <Arduino.h>
+
 #include "SetColorCommand.h"
 #include "../Globals.h"
-#include <Arduino.h>
 
 void SetColorCommand::execute(const CommandPacket& packet) {
   const char* value = packet.value;

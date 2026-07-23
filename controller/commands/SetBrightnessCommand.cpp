@@ -1,6 +1,7 @@
+#include <Arduino.h>
+
 #include "SetBrightnessCommand.h"
 #include "../Globals.h"
-#include <Arduino.h>
 
 void SetBrightnessCommand::execute(const CommandPacket& packet) {
   const char* value = packet.value;

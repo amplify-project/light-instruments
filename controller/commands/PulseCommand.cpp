@@ -1,7 +1,8 @@
-#include "PulseCommand.h"
-#include "../Globals.h"
 #include <Arduino.h>
 #include <cstring>
+
+#include "PulseCommand.h"
+#include "../Globals.h"
 
 void PulseCommand::execute(const CommandPacket& packet) {
   const char* value = packet.value;

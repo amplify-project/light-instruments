@@ -1,9 +1,10 @@
 #ifndef GLOBALS_H
 #define GLOBALS_H
 
+#include <vector>
+
 #include "HardwareConfig.h"
 #include "LedStrip.h"
-#include <vector>
 
 class CommandManager;
 

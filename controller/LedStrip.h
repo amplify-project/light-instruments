@@ -5,6 +5,7 @@
 #include <Arduino.h>
 #include <string>
 #include <memory>
+
 #include "animations/Animation.h"
 
 struct LedStrip {

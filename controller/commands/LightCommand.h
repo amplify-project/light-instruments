@@ -1,10 +1,11 @@
 #ifndef LIGHT_COMMAND_H
 #define LIGHT_COMMAND_H
 
-#include "../Globals.h"
-#include "../Protocol.h"
 #include <FastLED.h>
 #include <string>
+
+#include "../Globals.h"
+#include "../Protocol.h"
 
 class LightCommand {
 public:

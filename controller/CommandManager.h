@@ -5,6 +5,7 @@
 #include <memory>
 #include <string>
 #include <mutex>
+
 #include "commands/LightCommand.h"
 #include "Protocol.h"
 

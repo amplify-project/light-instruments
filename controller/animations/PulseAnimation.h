@@ -1,10 +1,11 @@
 #ifndef PULSE_ANIMATION_H
 #define PULSE_ANIMATION_H
 
-#include "Animation.h"
-#include "../Globals.h"
 #include <Arduino.h>
 #include <FastLED.h>
+
+#include "Animation.h"
+#include "../Globals.h"
 
 class PulseAnimation : public Animation {
 public:

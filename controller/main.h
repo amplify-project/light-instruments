@@ -10,11 +10,11 @@
 #include <Arduino.h>
 #include <esp_now.h>
 #include <WiFi.h>
-#include "Protocol.h"
 #include <FastLED.h>
 
 #include "Globals.h"
 #include "CommandManager.h"
+#include "Protocol.h"
 
 extern String deviceName;
 String deviceType = "actuator";
@@ -125,7 +125,6 @@ void processIncomingPackets() {
   }
 
   CommandPacket* p = (CommandPacket*)currentPacket.data;
-
   commandManager.process(*p);
 }
 

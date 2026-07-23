@@ -1,7 +1,8 @@
-#include "CometCommand.h"
-#include "../Globals.h"
 #include <Arduino.h>
 #include <cstring>
+
+#include "CometCommand.h"
+#include "../Globals.h"
 
 void CometCommand::execute(const CommandPacket& packet) {
   const char* value = packet.value;

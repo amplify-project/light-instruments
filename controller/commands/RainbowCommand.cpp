@@ -1,7 +1,8 @@
-#include "RainbowCommand.h"
-#include "../Globals.h"
 #include <Arduino.h>
 #include <cstring>
+
+#include "RainbowCommand.h"
+#include "../Globals.h"
 
 void RainbowCommand::execute(const CommandPacket& packet) {
   const char* value = packet.value;

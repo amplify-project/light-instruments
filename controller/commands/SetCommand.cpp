@@ -1,6 +1,7 @@
+#include <Arduino.h>
+
 #include "SetCommand.h"
 #include "../Globals.h"
-#include <Arduino.h>
 
 void SetCommand::execute(const CommandPacket& packet) {
   const char* value = packet.value;

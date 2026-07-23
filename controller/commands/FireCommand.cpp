@@ -1,6 +1,7 @@
+#include <Arduino.h>
+
 #include "FireCommand.h"
 #include "../Globals.h"
-#include <Arduino.h>
 
 void FireCommand::execute(const CommandPacket& packet) {
   const char* value = packet.value;

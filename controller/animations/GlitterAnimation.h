@@ -1,10 +1,11 @@
 #ifndef GLITTER_ANIMATION_H
 #define GLITTER_ANIMATION_H
 
-#include "Animation.h"
-#include "../Globals.h"
 #include <Arduino.h>
 #include <FastLED.h>
+
+#include "Animation.h"
+#include "../Globals.h"
 
 class GlitterAnimation : public Animation {
 public:

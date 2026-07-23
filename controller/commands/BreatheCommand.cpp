@@ -1,6 +1,7 @@
+#include <Arduino.h>
+
 #include "BreatheCommand.h"
 #include "../Globals.h"
-#include <Arduino.h>
 
 void BreatheCommand::execute(const CommandPacket& packet) {
   const char* value = packet.value;
