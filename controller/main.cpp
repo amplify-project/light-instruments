@@ -90,5 +90,6 @@ void setup() {
 }
 
 void loop() {
+  listenForSerialConfig();
   vTaskDelay(pdMS_TO_TICKS(100));
 }
