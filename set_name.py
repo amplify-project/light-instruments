@@ -17,7 +17,7 @@ def list_ports():
         print(f"  {port.device} - {port.description}")
 
 
-def set_config(port, name=None, leds=None):
+def set_config(port, name=None, leds=None, strips=None):
     try:
         # Open serial port
         # Typical ESP32 baudrate is 115200
@@ -40,6 +40,13 @@ def set_config(port, name=None, leds=None):
         # Send leds command if provided
         if leds:
             command = f"numleds={leds}\n"
+            print(f"Sending: {command.strip()}")
+            ser.write(command.encode('utf-8'))
+            time.sleep(0.1)
+
+        # Send strips command if provided
+        if strips:
+            command = f"numstrips={strips}\n"
             print(f"Sending: {command.strip()}")
             ser.write(command.encode('utf-8'))
             time.sleep(0.1)
@@ -67,6 +74,7 @@ def main():
     parser.add_argument("-p", "--port", help="The serial port to use (e.g., /dev/ttyUSB0 or COM3).")
     parser.add_argument("-l", "--list", action="store_true", help="List available serial ports.")
     parser.add_argument("--leds", type=int, help="The number of LEDs per strip.")
+    parser.add_argument("--strips", type=int, help="The number of LED strips.")
 
     args = parser.parse_args()
 
@@ -74,12 +82,12 @@ def main():
         list_ports()
         return
 
-    if not args.name and not args.leds:
+    if not args.name and not args.leds and not args.strips:
         if len(sys.argv) == 1:
             parser.print_help()
-            print("\nError: Name or --leds is required.")
+            print("\nError: Name, --leds, or --strips is required.")
         else:
-            print("Error: Name or --leds is required unless using --list.")
+            print("Error: Name, --leds, or --strips is required unless using --list.")
 
         sys.exit(1)
 
@@ -101,7 +109,7 @@ def main():
             print("Error: No serial ports found. Make sure your device is connected.")
             sys.exit(1)
 
-    set_config(args.port, args.name, args.leds)
+    set_config(args.port, args.name, args.leds, args.strips)
 
 
 if __name__ == "__main__":
