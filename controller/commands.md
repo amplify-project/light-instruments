@@ -110,9 +110,9 @@ Starts an organic fire flicker effect.
 
 The device name is used to target specific controllers in a multi-device setup. You can set a persistent name via the USB Serial connection.
 
-### Setting the Device Name
+### Setting the Device Configuration
 
-A Python script `set_name.py` is provided in the parent directory to simplify this process.
+A Python script `set_name.py` is provided in the parent directory to simplify the process of setting the device name, number of LEDs, and number of strips.
 
 **Requirements**:
 
@@ -122,8 +122,17 @@ A Python script `set_name.py` is provided in the parent directory to simplify th
 **Usage**:
 
 ```bash
-# Set a name (auto-detects port if only one is connected)
+# Set name and configuration (auto-detects port)
+./set_name.py my-device-name --leds 30 --strips 4
+
+# Only set name
 ./set_name.py my-device-name
+
+# Only set number of LEDs
+./set_name.py --leds 60
+
+# Only set number of strips
+./set_name.py --strips 2
 
 # Specify a port
 ./set_name.py my-device-name -p /dev/ttyUSB0
@@ -132,4 +141,4 @@ A Python script `set_name.py` is provided in the parent directory to simplify th
 ./set_name.py --list
 ```
 
-The name is saved to the device's non-volatile storage (NVS) and will persist across reboots and firmware updates.
+The configuration is saved to the device's non-volatile storage (NVS) and will persist across reboots and firmware updates.
