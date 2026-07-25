@@ -10,6 +10,7 @@ CommandManager commandManager;
 TaskHandle_t displayTaskHandle = NULL;
 extern String deviceName;
 extern String deviceType;
+extern int numLedsPerStrip;
 
 void showStrip(int index) {
   if (index >= 0 && index < numLedStrips) {
@@ -52,17 +53,14 @@ void addLedStrip(uint8_t port, int numLeds, const char* name) {
   ledStrips.emplace_back(stripName, leds, port, numLeds, (uint8_t)255, controller);
 }
 
-bool initDeviceName() {
+bool initPersistentConfig() {
   Preferences prefs;
   prefs.begin("system", true);
   deviceName = prefs.getString("name", "");
+  numLedsPerStrip = prefs.getInt("numleds", 0);
   prefs.end();
 
-  if (deviceName == "") {
-    return false;
-  }
-
-  return true;
+  return (deviceName != "" && numLedsPerStrip > 0);
 }
 
 void saveDeviceName(String name) {
@@ -74,7 +72,16 @@ void saveDeviceName(String name) {
   deviceName = name;
 }
 
-bool listenForDeviceName() {
+void saveNumLeds(int numLeds) {
+  Preferences prefs;
+  prefs.begin("system", false);
+  prefs.putInt("numleds", numLeds);
+  prefs.end();
+
+  numLedsPerStrip = numLeds;
+}
+
+bool listenForSerialConfig() {
   if (Serial.available()) {
     String input = Serial.readStringUntil('\n');
     input.trim();
@@ -87,9 +94,19 @@ bool listenForDeviceName() {
 
         Serial.print("Device name updated and saved to flash: ");
         Serial.println(deviceName);
-        return true;
+      }
+    } else if (input.startsWith("numleds=")) {
+      int newNumLeds = input.substring(8).toInt();
+
+      if (newNumLeds > 0) {
+        saveNumLeds(newNumLeds);
+
+        Serial.print("Number of LEDs updated and saved to flash: ");
+        Serial.println(numLedsPerStrip);
       }
     }
+
+    return (deviceName != "" && numLedsPerStrip > 0);
   }
 
   return false;

@@ -37,22 +37,27 @@ void displayTask(void *pvParameters) {
 void setup() {
   Serial.begin(115200);
 
-  if (!initDeviceName()) {
-    Serial.println("No persistent name found. Waiting for name=... command via Serial.");
+  if (!initPersistentConfig()) {
+    Serial.println("Persistent configuration missing. Waiting for name=... and numleds=... commands via Serial.");
 
-    while (!listenForDeviceName()) {
+    while (!listenForSerialConfig()) {
       vTaskDelay(pdMS_TO_TICKS(100));
     }
   }
 
   Serial.print("Device Name: ");
   Serial.println(deviceName);
+  Serial.print("LEDs per strip: ");
+  Serial.println(numLedsPerStrip);
 
   pinMode(LED_BUILTIN, OUTPUT);
   flashBuiltinLed();
 
   // Add LED strips here
-  addLedStrip(LED1, 30, "LED1");
+  addLedStrip(LED1, numLedsPerStrip, "LED1");
+  addLedStrip(LED2, numLedsPerStrip, "LED2");
+  addLedStrip(LED3, numLedsPerStrip, "LED3");
+  addLedStrip(LED4, numLedsPerStrip, "LED4");
 
   for (int i=0; i<numLedStrips; i++) {
     ledStrips[i].brightness = 50;
