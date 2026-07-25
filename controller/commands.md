@@ -142,3 +142,14 @@ A Python script `set_name.py` is provided in the parent directory to simplify th
 ```
 
 The configuration is saved to the device's non-volatile storage (NVS) and will persist across reboots and firmware updates.
+
+### Serial Commands
+
+In addition to the Python script, you can interact with the device directly via a Serial monitor (e.g., in PlatformIO or Arduino IDE) at 115200 baud. The following commands are supported:
+
+- `name=...`: Sets a new device name.
+- `numleds=...`: Sets the number of LEDs per strip.
+- `numstrips=...`: Sets the number of LED strips (1-4).
+- `status`: Displays the current persistent configuration.
+- `resetconfig`: Clears all persistent settings from flash and reboots the device.
+- `reboot`: Restarts the device.

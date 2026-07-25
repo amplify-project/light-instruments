@@ -97,7 +97,29 @@ bool listenForSerialConfig() {
     String input = Serial.readStringUntil('\n');
     input.trim();
 
-    if (input.startsWith("name=")) {
+    if (input == "resetconfig") {
+      Preferences prefs;
+      prefs.begin("system", false);
+      prefs.clear();
+      prefs.end();
+
+      Serial.println("Configuration cleared. Rebooting in 1 second...");
+      vTaskDelay(pdMS_TO_TICKS(1000));
+      ESP.restart();
+    } else if (input == "reboot") {
+      Serial.println("Rebooting...");
+      vTaskDelay(pdMS_TO_TICKS(500));
+      ESP.restart();
+    } else if (input == "status") {
+      Serial.println("--- Current Configuration ---");
+      Serial.print("Device Name: ");
+      Serial.println(deviceName == "" ? "[Not set]" : deviceName);
+      Serial.print("LEDs per strip: ");
+      Serial.println(numLedsPerStrip);
+      Serial.print("Number of strips: ");
+      Serial.println(numStrips);
+      Serial.println("-----------------------------");
+    } else if (input.startsWith("name=")) {
       String newName = input.substring(5);
 
       if (newName.length() > 0) {
@@ -114,15 +136,17 @@ bool listenForSerialConfig() {
 
         Serial.print("Number of LEDs updated and saved to flash: ");
         Serial.println(numLedsPerStrip);
+        Serial.println("Reboot required to apply changes.");
       }
     } else if (input.startsWith("numstrips=")) {
       int newNumStrips = input.substring(10).toInt();
 
-      if (newNumStrips > 0) {
+      if (newNumStrips > 0 && newNumStrips <= 4) {
         saveNumStrips(newNumStrips);
 
         Serial.print("Number of LED strips updated and saved to flash: ");
         Serial.println(numStrips);
+        Serial.println("Reboot required to apply changes.");
       }
     }
 
