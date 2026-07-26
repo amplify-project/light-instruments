@@ -169,6 +169,10 @@ void setup() {
 }
 
 void loop() {
+  if (pingReceived) {
+    sendPong();
+  }
+
   int rawValue = analogRead(analogPin);
 
   // Apply Exponential Moving Average (EMA) smoothing
