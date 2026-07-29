@@ -24,7 +24,7 @@ void initAccelerometer() {
   Wire.endTransmission(true);
 }
 
-AccelerationReading readAccelerationValues() {
+bool readAccelerationValues(AccelerationReading *reading) {
   Wire.beginTransmission(0x68);
   Wire.write(0x3B);
   Wire.endTransmission(false);
@@ -38,9 +38,11 @@ AccelerationReading readAccelerationValues() {
   float y = abs(rawY / 8192.0 * 9.80665);
   float z = abs(rawZ / 8192.0 * 9.80665);
 
-  return AccelerationReading {
-    x, y, z
-  };
+  reading->x = x;
+  reading->y = y;
+  reading->z = z;
+
+  return true;
 }
 
 #endif

@@ -210,7 +210,8 @@ void loop() {
   #endif
 
   #ifdef USE_MPU6050
-  AccelerationReading reading = readAccelerationValues();
+  AccelerationReading reading;
+  readAccelerationValues(&reading);
 
   float x = reading.x;
   float y = reading.y;
