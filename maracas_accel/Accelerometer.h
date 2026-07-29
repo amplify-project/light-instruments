@@ -3,6 +3,7 @@
 
 #ifdef USE_MPU6050
 
+#include <Arduino.h>
 #include <Wire.h>
 
 typedef struct AccelerationReading {
@@ -12,11 +13,11 @@ typedef struct AccelerationReading {
 } AccelerationReading;
 
 void initAccelerometer() {
-  Wire.begin();                      // Initialize comunication
+  Wire.begin(SDA, SCL);                       // Initialize comunication
   Wire.beginTransmission(0x68);       // Start communication with MPU6050 // MPU=0x68
-  Wire.write(0x6B);                  // Talk to the register 6B
-  Wire.write(0x00);                  // Make reset - place a 0 into the 6B register
-  Wire.endTransmission(true);        //end the transmission
+  Wire.write(0x6B);                   // Talk to the register 6B
+  Wire.write(0x00);                   // Reset - place a 0 into the 6B register
+  Wire.endTransmission(true);
 
   Wire.beginTransmission(0x68);
   Wire.write(0x1C);                  // ACCEL_CONFIG register
