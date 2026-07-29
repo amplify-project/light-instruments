@@ -197,25 +197,33 @@ void processIncomingPackets() {
         memcpy(mac.data(), currentPacket.mac, 6);
 
         Serial.printf("MSG,discovery,%s,%s\n", p->deviceType, p->deviceName);
+
         {
           std::lock_guard<std::mutex> lock(devicesMtx);
           discoveredDevices[p->deviceName] = { mac, p->deviceType };
         }
+
         break;
       }
       case MSG_PONG: {
-        if (currentPacket.len < (int)sizeof(PongPacket)) continue;
-        PongPacket* p = (PongPacket*)currentPacket.data;
+        if (currentPacket.len < (int)sizeof(PongPacket)) {
+          continue;
+        }
 
+        PongPacket* p = (PongPacket*)currentPacket.data;
         Serial.printf("MSG,pong,%s,%s\n", p->deviceType, p->deviceName);
         Serial.printf("MSG,queuelen,%d\n", currentQueueSize);
+
         break;
       }
       case MSG_DATA: {
-        if (currentPacket.len < (int)sizeof(DataPacket)) continue;
-        DataPacket* p = (DataPacket*)currentPacket.data;
+        if (currentPacket.len < (int)sizeof(DataPacket)) {
+          continue;
+        }
 
+        DataPacket* p = (DataPacket*)currentPacket.data;
         Serial.printf("DATA,%s,%s,%d\n", p->deviceName, p->port, p->value);
+
         break;
       }
       default:
@@ -382,12 +390,14 @@ void setup() {
 
   // Send initial discovery message
   sendDiscovery();
-  lastDiscoveryTime = millis();
 
+  lastDiscoveryTime = millis();
   lastPingTime = millis();
 
   xTaskCreatePinnedToCore(serialTask, "SerialTask", 4096, NULL, 1, NULL, 0);
   xTaskCreatePinnedToCore(logicTask, "LogicTask", 4096, NULL, 1, NULL, 1);
+
+  Serial.printf("READY\n");
 }
 
 void loop() {

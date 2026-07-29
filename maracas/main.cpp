@@ -1,8 +1,9 @@
 #include <esp_now.h>
 #include <WiFi.h>
 #include <Preferences.h>
-#include "Protocol.h"
 #include <Bounce2.h>
+
+#include "Protocol.h"
 
 #define DEBOUNCE_INTERVAL 10
 
