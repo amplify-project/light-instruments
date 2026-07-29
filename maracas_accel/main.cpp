@@ -2,12 +2,22 @@
 #include <esp_now.h>
 #include <WiFi.h>
 #include <Preferences.h>
+#include <Adafruit_MMA8451.h>
+#include <Adafruit_Sensor.h>
+
 #include "Protocol.h"
 
 uint8_t relayAddress[6];
 bool relayFound = false;
 esp_now_peer_info_t peerInfo;
 String deviceName = "";
+
+Adafruit_MMA8451 mma = Adafruit_MMA8451();
+float lastX = 0, lastY = 0, lastZ = 0;
+bool peakSearchX = false, peakSearchY = false, peakSearchZ = false;
+const float threshold = 15.0; // Acceleration threshold for shake detection
+unsigned long lastEventTime = 0;
+const unsigned long cooldown = 100; // ms between events to avoid double triggering
 
 bool pingReceived = false;
 
@@ -130,6 +140,12 @@ void setup() {
   delay(100);
   digitalWrite(LED_BUILTIN, HIGH);
 
+  if (!mma.begin()) {
+    Serial.println("Couldnt start MMA8451");
+    while (1);
+  }
+  mma.setRange(MMA8451_RANGE_4_G);
+
   // Initialise ESP-NOW
   WiFi.mode(WIFI_STA);
   if (esp_now_init() != ESP_OK) {
@@ -165,6 +181,64 @@ void loop() {
     Serial.println("Processing ping...");
     sendPong();
   }
+
+  sensors_event_t event;
+  mma.getEvent(&event);
+
+  float x = abs(event.acceleration.x);
+  float y = abs(event.acceleration.y);
+  float z = abs(event.acceleration.z);
+
+  bool triggered = false;
+  unsigned long now = millis();
+
+  if (now - lastEventTime > cooldown) {
+    // Check X axis for apex
+    if (x > threshold) {
+      if (x > lastX) {
+        peakSearchX = true;
+      } else if (peakSearchX) {
+        triggered = true;
+      }
+    } else {
+      peakSearchX = false;
+    }
+
+    // Check Y axis for apex
+    if (y > threshold) {
+      if (y > lastY) {
+        peakSearchY = true;
+      } else if (peakSearchY) {
+        triggered = true;
+      }
+    } else {
+      peakSearchY = false;
+    }
+
+    // Check Z axis for apex
+    if (z > threshold) {
+      if (z > lastZ) {
+        peakSearchZ = true;
+      } else if (peakSearchZ) {
+        triggered = true;
+      }
+    } else {
+      peakSearchZ = false;
+    }
+
+    if (triggered) {
+      sendEvent();
+
+      lastEventTime = now;
+      peakSearchX = false;
+      peakSearchY = false;
+      peakSearchZ = false;
+    }
+  }
+
+  lastX = x;
+  lastY = y;
+  lastZ = z;
 
   delay(1);
 }
