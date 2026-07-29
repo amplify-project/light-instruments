@@ -2,20 +2,31 @@
 #include <esp_now.h>
 #include <WiFi.h>
 #include <Preferences.h>
+
+#ifdef USE_MMA8451
 #include <Adafruit_MMA8451.h>
 #include <Adafruit_Sensor.h>
+#endif
+
+#ifdef USE_MPU6050
+#include "Accelerometer.h"
+#endif
 
 #include "Protocol.h"
+#include "Accelerometer.h"
 
 uint8_t relayAddress[6];
 bool relayFound = false;
 esp_now_peer_info_t peerInfo;
 String deviceName = "";
 
+#ifdef USE_MMA8451
 Adafruit_MMA8451 mma = Adafruit_MMA8451();
+#endif
+
 float lastX = 0, lastY = 0, lastZ = 0;
 bool peakSearchX = false, peakSearchY = false, peakSearchZ = false;
-const float threshold = 15.0; // Acceleration threshold for shake detection
+const float threshold = 30.0; // Acceleration threshold for shake detection
 unsigned long lastEventTime = 0;
 const unsigned long cooldown = 100; // ms between events to avoid double triggering
 
@@ -140,11 +151,18 @@ void setup() {
   delay(100);
   digitalWrite(LED_BUILTIN, HIGH);
 
+  #ifdef USE_MMA8451
   if (!mma.begin()) {
     Serial.println("Couldnt start MMA8451");
     while (1);
   }
+
   mma.setRange(MMA8451_RANGE_4_G);
+  #endif
+
+  #ifdef USE_MPU6050
+  initAccelerometer();
+  #endif
 
   // Initialise ESP-NOW
   WiFi.mode(WIFI_STA);
@@ -182,12 +200,22 @@ void loop() {
     sendPong();
   }
 
+  #ifdef USE_MMA8451
   sensors_event_t event;
   mma.getEvent(&event);
 
   float x = abs(event.acceleration.x);
   float y = abs(event.acceleration.y);
   float z = abs(event.acceleration.z);
+  #endif
+
+  #ifdef USE_MPU6050
+  AccelerationReading reading = readAccelerationValues();
+
+  float x = reading.x;
+  float y = reading.y;
+  float z = reading.z;
+  #endif
 
   bool triggered = false;
   unsigned long now = millis();
