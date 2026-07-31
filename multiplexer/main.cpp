@@ -1,19 +1,8 @@
 #include <Arduino.h>
-
-#define DIP1 D3
-#define DIP2 D4
-#define DIP3 D5
-
-#define SELECTOR1 D0
-#define SELECTOR2 D1
-#define SELECTOR3 D2
-
-#define DATA D8
-
-int numChannels = 0;
+#include "config.h"
 
 int getNumChannels() {
-  int channels = digitalRead(DIP1) | digitalRead(DIP2) << 1 | digitalRead(DIP3) << 2;
+  int channels = !digitalRead(DIP1) | !digitalRead(DIP2) << 1 | !digitalRead(DIP3) << 2;
 
   if (channels == 0) {
     return 8;
@@ -23,7 +12,13 @@ int getNumChannels() {
 }
 
 void setup() {
+  #ifdef XIAO
   Serial.begin(115200);
+  #endif
+
+  #ifdef LOLIN
+  Serial.begin(460800);
+  #endif
 
   pinMode(DIP1, INPUT_PULLUP);
   pinMode(DIP2, INPUT_PULLUP);
@@ -33,20 +28,24 @@ void setup() {
   pinMode(SELECTOR2, OUTPUT);
   pinMode(SELECTOR3, OUTPUT);
 
-  pinMode(DATA, INPUT);
+  pinMode(DATA, INPUT_PULLDOWN);
 
-  numChannels = getNumChannels();
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, LOW);
 }
 
 void loop() {
-  for (int i=0; i<numChannels; i++) {
+  for (int i=0; i<getNumChannels(); i++) {
     digitalWrite(SELECTOR1, (i & 0b001) >> 0);
     digitalWrite(SELECTOR2, (i & 0b010) >> 1);
     digitalWrite(SELECTOR3, (i & 0b100) >> 2);
+    delay(1);
 
-    delay(10);
-
-    u_int16_t data = analogRead(DATA);
+    u_int16_t data = digitalRead(DATA);
     Serial.printf("%d => %d\n", i, data);
+    delay(1);
   }
+
+  Serial.println("===");
+  delay(1000);
 }
