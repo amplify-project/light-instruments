@@ -98,6 +98,19 @@ void onReceive(const uint8_t *macAddr, const uint8_t *data, int len) {
 }
 
 /**
+ * @brief Flash builtin LED twice
+ */
+void flashBuiltinLed() {
+  digitalWrite(LED_BUILTIN, LOW);
+  delay(100);
+  digitalWrite(LED_BUILTIN, HIGH);
+  delay(100);
+  digitalWrite(LED_BUILTIN, LOW);
+  delay(100);
+  digitalWrite(LED_BUILTIN, HIGH);
+}
+
+/**
  * @brief Turns the builtin LED back on if FLASH_DURATION has elapsed.
  */
 void updateActivityIndicator() {
@@ -358,6 +371,9 @@ void setup() {
   Serial.begin(460800);
   delay(500); // Give the serial monitor time to connect
 
+  pinMode(LED_BUILTIN, OUTPUT);
+  flashBuiltinLed();
+
   WiFi.mode(WIFI_STA);
 
   if (esp_now_init() != 0) {
@@ -384,10 +400,6 @@ void setup() {
     return;
   }
 
-  // Turn on builtin LED to indicate successful initialization
-  pinMode(LED_BUILTIN, OUTPUT);
-  digitalWrite(LED_BUILTIN, LOW);
-
   // Send initial discovery message
   sendDiscovery();
 
@@ -396,6 +408,9 @@ void setup() {
 
   xTaskCreatePinnedToCore(serialTask, "SerialTask", 4096, NULL, 1, NULL, 0);
   xTaskCreatePinnedToCore(logicTask, "LogicTask", 4096, NULL, 1, NULL, 1);
+
+  // Turn on builtin LED to indicate successful initialization
+  digitalWrite(LED_BUILTIN, LOW);
 
   Serial.printf("READY\n");
 }
