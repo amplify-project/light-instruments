@@ -3,6 +3,15 @@
 #include <WiFi.h>
 #include <Preferences.h>
 
+#ifdef XIAO
+#define DEVICE_RESET D7
+#endif
+
+#ifdef LOLIN
+#define DEVICE_RESET 32
+#endif
+
+
 #ifdef USE_MMA8451
 #include <Adafruit_MMA8451.h>
 #include <Adafruit_Sensor.h>
@@ -67,6 +76,19 @@ void sendPong() {
   esp_now_send(relayAddress, (uint8_t *)&packet, sizeof(packet));
 }
 
+void handleMemoryReset() {
+  pinMode(DEVICE_RESET, INPUT_PULLUP);
+
+  if (digitalRead(DEVICE_RESET) == LOW) {
+    Serial.println("Performing memory reset...");
+    Preferences prefs;
+
+    prefs.begin("system", false);
+    prefs.clear();
+    prefs.end();
+  }
+}
+
 bool initDeviceName() {
   Preferences prefs;
 
@@ -129,6 +151,7 @@ void sendEvent() {
 
 void setup() {
   Serial.begin(115200);
+  handleMemoryReset();
 
   if (!initDeviceName()) {
     Serial.println("No persistent name found. Waiting for name=... command via Serial.");
