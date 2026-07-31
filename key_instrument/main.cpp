@@ -3,6 +3,7 @@
 #include <Preferences.h>
 #include "Protocol.h"
 
+#define DEVICE_RESET D7
 #define BTN_PRESSED 1
 #define BTN_RELEASED 0
 
@@ -73,6 +74,19 @@ void sendEvent(int id, int action) {
   }
 }
 
+void handleMemoryReset() {
+  pinMode(DEVICE_RESET, INPUT_PULLUP);
+
+  if (digitalRead(DEVICE_RESET) == LOW) {
+    Serial.println("Performing memory reset...");
+    Preferences prefs;
+
+    prefs.begin("system", false);
+    prefs.clear();
+    prefs.end();
+  }
+}
+
 bool initDeviceName() {
   Preferences prefs;
 
@@ -117,6 +131,7 @@ bool listenForDeviceName() {
 
 void setup() {
   Serial.begin(115200);
+  handleMemoryReset();
 
   if (!initDeviceName()) {
     Serial.println("No persistent name found. Waiting for name=... command via Serial.");
