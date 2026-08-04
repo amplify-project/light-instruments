@@ -1,7 +1,5 @@
 #include <Arduino.h>
-#include <esp_now.h>
-#include <WiFi.h>
-#include <Preferences.h>
+#include "LightInstrument.h"
 
 #ifdef XIAO
 #define DEVICE_RESET D7
@@ -10,7 +8,6 @@
 #ifdef LOLIN
 #define DEVICE_RESET 32
 #endif
-
 
 #ifdef USE_MMA8451
 #include <Adafruit_MMA8451.h>
@@ -21,13 +18,9 @@
 #include "Accelerometer.h"
 #endif
 
-#include "Protocol.h"
 #include "Accelerometer.h"
 
-uint8_t relayAddress[6];
-bool relayFound = false;
-esp_now_peer_info_t peerInfo;
-String deviceName = "";
+LightInstrument device;
 
 #ifdef USE_MMA8451
 Adafruit_MMA8451 mma = Adafruit_MMA8451();
@@ -39,130 +32,17 @@ const float threshold = 30.0; // Acceleration threshold for shake detection
 unsigned long lastEventTime = 0;
 const unsigned long cooldown = 100; // ms between events to avoid double triggering
 
-bool pingReceived = false;
-
-void onDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
-  if (len < (int)sizeof(ProtocolHeader)) return;
-  ProtocolHeader* header = (ProtocolHeader*)incomingData;
-
-  if (header->type == MSG_DISCOVERY) {
-    if (!relayFound) {
-      memcpy(relayAddress, mac, 6);
-      relayFound = true;
-    }
-  } else if (header->type == MSG_PING) {
-    pingReceived = true;
-  }
-}
-
-void sendDiscoveryResponse() {
-  DiscoveryResponsePacket packet;
-  memset(&packet, 0, sizeof(packet));
-  packet.type = MSG_DISCOVERY_RESPONSE;
-  strncpy(packet.deviceName, deviceName.c_str(), sizeof(packet.deviceName) - 1);
-  strncpy(packet.deviceType, "sensor", sizeof(packet.deviceType) - 1);
-
-  esp_now_send(relayAddress, (uint8_t *)&packet, sizeof(packet));
-}
-
-void sendPong() {
-  PongPacket packet;
-  memset(&packet, 0, sizeof(packet));
-  packet.type = MSG_PONG;
-  strncpy(packet.deviceName, deviceName.c_str(), sizeof(packet.deviceName) - 1);
-  strncpy(packet.deviceType, "sensor", sizeof(packet.deviceType) - 1);
-
-  pingReceived = false;
-  esp_now_send(relayAddress, (uint8_t *)&packet, sizeof(packet));
-}
-
-void handleMemoryReset() {
-  pinMode(DEVICE_RESET, INPUT_PULLUP);
-
-  if (digitalRead(DEVICE_RESET) == LOW) {
-    Serial.println("Performing memory reset...");
-    Preferences prefs;
-
-    prefs.begin("system", false);
-    prefs.clear();
-    prefs.end();
-  }
-}
-
-bool initDeviceName() {
-  Preferences prefs;
-
-  prefs.begin("system", true);
-  deviceName = prefs.getString("name", "");
-  prefs.end();
-
-  return (deviceName != "");
-}
-
-void saveDeviceName(String name) {
-  Preferences prefs;
-
-  prefs.begin("system", false);
-  prefs.putString("name", name);
-  prefs.end();
-
-  deviceName = name;
-}
-
-bool listenForDeviceName() {
-  if (Serial.available()) {
-    String input = Serial.readStringUntil('\n');
-    input.trim();
-
-    if (input.startsWith("name=")) {
-      String newName = input.substring(5);
-
-      if (newName.length() > 0) {
-        saveDeviceName(newName);
-
-        Serial.print("Device name updated and saved to flash: ");
-        Serial.println(deviceName);
-
-        return true;
-      }
-    }
-  }
-
-  return false;
-}
-
-void sendEvent() {
-  DataPacket packet;
-  memset(&packet, 0, sizeof(packet));
-  packet.type = MSG_DATA;
-
-  strncpy(packet.deviceName, deviceName.c_str(), sizeof(packet.deviceName) - 1);
-  strncpy(packet.port, "accel", sizeof(packet.port) - 1);
-  packet.value = 1;
-
-  esp_err_t result = esp_now_send(relayAddress, (uint8_t *)&packet, sizeof(packet));
-
-  if (result != ESP_OK) {
-    Serial.println("Error sending event");
-  } else {
-    Serial.println("Event sent");
-  }
-}
-
 void setup() {
-  Serial.begin(115200);
-  handleMemoryReset();
+  device.begin(DEVICE_RESET);
 
-  if (!initDeviceName()) {
+  if (device.getDeviceName() == "") {
     Serial.println("No persistent name found. Waiting for name=... command via Serial.");
 
-    while (!listenForDeviceName()) {
+    while (device.getDeviceName() == "") {
+      device.listenForDeviceName();
       delay(100);
     }
   }
-
-  Serial.print("Device Name: ");
-  Serial.println(deviceName);
 
   pinMode(LED_BUILTIN, OUTPUT);
 
@@ -179,7 +59,6 @@ void setup() {
     Serial.println("Couldnt start MMA8451");
     while (1);
   }
-
   mma.setRange(MMA8451_RANGE_4_G);
   #endif
 
@@ -187,41 +66,18 @@ void setup() {
   initAccelerometer();
   #endif
 
-  // Initialise ESP-NOW
-  WiFi.mode(WIFI_STA);
-  if (esp_now_init() != ESP_OK) {
-    Serial.println("Error initializing ESP-NOW");
-    return;
-  }
-
-  esp_now_register_recv_cb(onDataRecv);
-
   Serial.println("Waiting for relay discovery...");
-  while (!relayFound) {
+
+  while (!device.isRelayFound()) {
     delay(10);
   }
+
   Serial.println("Relay discovered!");
-
-  // Register Peer
-  memset(&peerInfo, 0, sizeof(peerInfo));
-  memcpy(peerInfo.peer_addr, relayAddress, 6);
-  peerInfo.channel = 0;
-  peerInfo.encrypt = false;
-
-  if (esp_now_add_peer(&peerInfo) != ESP_OK) {
-    Serial.println("Failed to add peer");
-    return;
-  }
-
-  sendDiscoveryResponse();
   digitalWrite(LED_BUILTIN, LOW); // Turn on LED (active-low)
 }
 
 void loop() {
-  if (pingReceived) {
-    Serial.println("Processing ping...");
-    sendPong();
-  }
+  device.update();
 
   #ifdef USE_MMA8451
   sensors_event_t event;
@@ -245,7 +101,6 @@ void loop() {
   unsigned long now = millis();
 
   if (now - lastEventTime > cooldown) {
-    // Check X axis for apex
     if (x > threshold) {
       if (x > lastX) {
         peakSearchX = true;
@@ -256,7 +111,6 @@ void loop() {
       peakSearchX = false;
     }
 
-    // Check Y axis for apex
     if (y > threshold) {
       if (y > lastY) {
         peakSearchY = true;
@@ -267,7 +121,6 @@ void loop() {
       peakSearchY = false;
     }
 
-    // Check Z axis for apex
     if (z > threshold) {
       if (z > lastZ) {
         peakSearchZ = true;
@@ -279,7 +132,8 @@ void loop() {
     }
 
     if (triggered) {
-      sendEvent();
+      device.sendEvent("accel", 1);
+      Serial.println("Event sent");
 
       lastEventTime = now;
       peakSearchX = false;
