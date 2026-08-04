@@ -1,138 +1,25 @@
-#include <esp_now.h>
-#include <WiFi.h>
-#include <Preferences.h>
-#include "Protocol.h"
+#include <Arduino.h>
+#include "LightInstrument.h"
 
 #define DEVICE_RESET D7
 #define PHOTODIODE_PIN A3
 
-uint8_t relayAddress[6];
-bool relayFound = false;
-esp_now_peer_info_t peerInfo;
-String deviceName = "";
-
-bool pingReceived = false;
+LightInstrument device;
 
 const int threshold = 50; // Ignore minor voltage jitter
 int lastValue = -1;
 
-void onDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
-  if (len < (int)sizeof(ProtocolHeader)) return;
-  ProtocolHeader* header = (ProtocolHeader*)incomingData;
-
-  if (header->type == MSG_DISCOVERY) {
-    if (!relayFound) {
-      memcpy(relayAddress, mac, 6);
-      relayFound = true;
-    }
-  } else if (header->type == MSG_PING) {
-    pingReceived = true;
-  }
-}
-
-void sendPong() {
-  PongPacket packet;
-  memset(&packet, 0, sizeof(packet));
-  packet.type = MSG_PONG;
-  strncpy(packet.deviceName, deviceName.c_str(), sizeof(packet.deviceName) - 1);
-  strncpy(packet.deviceType, "sensor", sizeof(packet.deviceType) - 1);
-
-  pingReceived = false;
-  esp_now_send(relayAddress, (uint8_t *)&packet, sizeof(packet));
-}
-
-void sendDiscoveryResponse() {
-  DiscoveryResponsePacket packet;
-  memset(&packet, 0, sizeof(packet));
-  packet.type = MSG_DISCOVERY_RESPONSE;
-  strncpy(packet.deviceName, deviceName.c_str(), sizeof(packet.deviceName) - 1);
-  strncpy(packet.deviceType, "sensor", sizeof(packet.deviceType) - 1);
-
-  esp_now_send(relayAddress, (uint8_t *)&packet, sizeof(packet));
-}
-
-void sendEvent(int val) {
-  DataPacket packet;
-  memset(&packet, 0, sizeof(packet));
-  packet.type = MSG_DATA;
-  strncpy(packet.deviceName, deviceName.c_str(), sizeof(packet.deviceName) - 1);
-  strncpy(packet.port, "A3", sizeof(packet.port) - 1);
-  packet.value = val;
-
-  esp_now_send(relayAddress, (uint8_t *)&packet, sizeof(packet));
-
-  Serial.printf("Value: %d\n", val);
-}
-
-void handleMemoryReset() {
-  pinMode(DEVICE_RESET, INPUT_PULLUP);
-
-  if (digitalRead(DEVICE_RESET) == LOW) {
-    Serial.println("Performing memory reset...");
-    Preferences prefs;
-
-    prefs.begin("system", false);
-    prefs.clear();
-    prefs.end();
-  }
-}
-
-bool initDeviceName() {
-  Preferences prefs;
-
-  prefs.begin("system", true);
-  deviceName = prefs.getString("name", "");
-  prefs.end();
-
-  return (deviceName != "");
-}
-
-void saveDeviceName(String name) {
-  Preferences prefs;
-
-  prefs.begin("system", false);
-  prefs.putString("name", name);
-  prefs.end();
-
-  deviceName = name;
-}
-
-bool listenForDeviceName() {
-  if (Serial.available()) {
-    String input = Serial.readStringUntil('\n');
-    input.trim();
-
-    if (input.startsWith("name=")) {
-      String newName = input.substring(5);
-
-      if (newName.length() > 0) {
-        saveDeviceName(newName);
-
-        Serial.print("Device name updated and saved to flash: ");
-        Serial.println(deviceName);
-
-        return true;
-      }
-    }
-  }
-
-  return false;
-}
-
 void setup() {
-  Serial.begin(115200);
-  handleMemoryReset();
+  device.begin(DEVICE_RESET);
 
-  if (!initDeviceName()) {
+  if (device.getDeviceName() == "") {
     Serial.println("No persistent name found. Waiting for name=... command via Serial.");
 
-    while (!listenForDeviceName()) {
+    while (device.getDeviceName() == "") {
+      device.listenForDeviceName();
       delay(100);
     }
   }
-
-  Serial.print("Device Name: ");
-  Serial.println(deviceName);
 
   pinMode(LED_BUILTIN, OUTPUT);
 
@@ -147,49 +34,26 @@ void setup() {
   pinMode(PHOTODIODE_PIN, INPUT);
   analogReadResolution(12);
 
-  WiFi.mode(WIFI_STA);
-  WiFi.disconnect();
-
-  if (esp_now_init() != ESP_OK) {
-    Serial.println("Error initializing ESP-NOW");
-    return;
-  }
-
-  esp_now_register_recv_cb(onDataRecv);
-
   Serial.println("Waiting for relay discovery...");
-  while (!relayFound) {
+
+  while (!device.isRelayFound()) {
     delay(10);
   }
+
   Serial.println("Relay discovered!");
-
-  // Register Peer
-  memset(&peerInfo, 0, sizeof(peerInfo));
-  memcpy(peerInfo.peer_addr, relayAddress, 6);
-  peerInfo.channel = 0;
-  peerInfo.encrypt = false;
-
-  if (esp_now_add_peer(&peerInfo) != ESP_OK) {
-    Serial.println("Failed to add peer");
-    return;
-  }
-
-  sendDiscoveryResponse();
   digitalWrite(LED_BUILTIN, LOW); // Turn on LED (active-low)
 }
 
 void loop() {
-  if (pingReceived) {
-    Serial.println("Processing ping...");
-    sendPong();
-  }
+  device.update();
 
   int currentValue = analogRead(PHOTODIODE_PIN);
 
   // Only send if the value has changed significantly
   if (abs(currentValue - lastValue) > threshold) {
-    sendEvent(currentValue);
+    device.sendEvent("A3", currentValue);
     lastValue = currentValue;
+    Serial.printf("Value: %d\n", currentValue);
   }
 
   delay(50);
