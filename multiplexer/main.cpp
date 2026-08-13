@@ -5,6 +5,7 @@
 #define DEVICE_RESET D7
 
 LightInstrument device;
+int lastStates[] = { LOW, LOW, LOW, LOW, LOW, LOW, LOW, LOW };
 
 int getNumChannels() {
   int channels = !digitalRead(DIP1) | !digitalRead(DIP2) << 1 | !digitalRead(DIP3) << 2;
@@ -69,14 +70,18 @@ void loop() {
 
   for (int i=0; i<getNumChannels(); i++) {
     setPort(i);
+    u_int16_t currentState = digitalRead(DATA);
 
-    u_int16_t data = digitalRead(DATA);
-    Serial.printf("%d => %d\n", i, data);
+    if (currentState != lastStates[i]) {
+      Serial.printf("%d => %d\n", i, currentState);
 
-    char portName[3];
-    sprintf(portName, "D%d", i + 1);
-    device.sendEvent(portName, data);
+      char portName[3];
+      sprintf(portName, "D%d", i + 1);
+      device.sendEvent(portName, currentState);
 
-    delay(10);
+      lastStates[i] = currentState;
+    }
+
+    delay(5);
   }
 }
