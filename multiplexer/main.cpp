@@ -16,6 +16,13 @@ int getNumChannels() {
   return channels;
 }
 
+void setPort(int i) {
+  digitalWrite(SELECTOR1, (i & 0b001) >> 0);
+  digitalWrite(SELECTOR2, (i & 0b010) >> 1);
+  digitalWrite(SELECTOR3, (i & 0b100) >> 2);
+  delay(1);
+}
+
 void setup() {
   device.begin(DEVICE_RESET);
 
@@ -61,10 +68,7 @@ void loop() {
   device.update();
 
   for (int i=0; i<getNumChannels(); i++) {
-    digitalWrite(SELECTOR1, (i & 0b001) >> 0);
-    digitalWrite(SELECTOR2, (i & 0b010) >> 1);
-    digitalWrite(SELECTOR3, (i & 0b100) >> 2);
-    delay(1);
+    setPort(i);
 
     u_int16_t data = digitalRead(DATA);
     Serial.printf("%d => %d\n", i, data);
