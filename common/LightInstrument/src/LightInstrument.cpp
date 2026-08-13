@@ -65,6 +65,7 @@ void LightInstrument::onDataRecv(const uint8_t * mac, const uint8_t *incomingDat
             relayFound = true;
             Serial.println("Relay found and peer added");
         }
+
         sendDiscoveryResponse();
     } else if (header->type == MSG_PING) {
         pingReceived = true;
