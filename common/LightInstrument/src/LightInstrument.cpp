@@ -31,6 +31,18 @@ void LightInstrument::begin(int resetPin) {
     esp_now_register_recv_cb(onDataRecvStatic);
 }
 
+void LightInstrument::signalBootStart() {
+    pinMode(LED_BUILTIN, OUTPUT);
+
+    digitalWrite(LED_BUILTIN, LOW);
+    delay(100);
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(100);
+    digitalWrite(LED_BUILTIN, LOW);
+    delay(100);
+    digitalWrite(LED_BUILTIN, HIGH);
+}
+
 void LightInstrument::update() {
     if (pingReceived) {
         sendPong();

@@ -20,6 +20,8 @@ public:
     const uint8_t* getRelayAddress() const { return relayAddress; }
     bool isRelayFound() const { return relayFound; }
 
+    void signalBootStart();
+
 private:
     static void onDataRecvStatic(const uint8_t * mac, const uint8_t *incomingData, int len);
     void onDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len);
