@@ -72,7 +72,10 @@ void loop() {
 
     u_int16_t data = digitalRead(DATA);
     Serial.printf("%d => %d\n", i, data);
-    device.sendEvent(String(i).c_str(), data);
+
+    char portName[3];
+    sprintf(portName, "D%d", i + 1);
+    device.sendEvent(portName, data);
 
     delay(10);
   }
