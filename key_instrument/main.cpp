@@ -25,14 +25,7 @@ void setup() {
     }
   }
 
-  pinMode(LED_BUILTIN, OUTPUT);
-  digitalWrite(LED_BUILTIN, LOW);
-  delay(100);
-  digitalWrite(LED_BUILTIN, HIGH);
-  delay(100);
-  digitalWrite(LED_BUILTIN, LOW);
-  delay(100);
-  digitalWrite(LED_BUILTIN, HIGH);
+  device.signalBootStart();
 
   for (int i = 0; i < numButtons; i++) {
     pinMode(buttonPins[i], INPUT_PULLUP);
@@ -45,7 +38,7 @@ void setup() {
   }
 
   Serial.println("Relay discovered!");
-  digitalWrite(LED_BUILTIN, LOW);
+  device.signalDeviceReady();
 }
 
 void loop() {

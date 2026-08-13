@@ -21,15 +21,7 @@ void setup() {
     }
   }
 
-  pinMode(LED_BUILTIN, OUTPUT);
-
-  digitalWrite(LED_BUILTIN, LOW);
-  delay(100);
-  digitalWrite(LED_BUILTIN, HIGH);
-  delay(100);
-  digitalWrite(LED_BUILTIN, LOW);
-  delay(100);
-  digitalWrite(LED_BUILTIN, HIGH);
+  device.signalBootStart();
 
   pinMode(PHOTODIODE_PIN, INPUT);
   analogReadResolution(12);
@@ -41,7 +33,7 @@ void setup() {
   }
 
   Serial.println("Relay discovered!");
-  digitalWrite(LED_BUILTIN, LOW); // Turn on LED (active-low)
+  device.signalDeviceReady();
 }
 
 void loop() {

@@ -22,15 +22,7 @@ void setup() {
     }
   }
 
-  pinMode(LED_BUILTIN, OUTPUT);
-
-  digitalWrite(LED_BUILTIN, LOW);
-  delay(100);
-  digitalWrite(LED_BUILTIN, HIGH);
-  delay(100);
-  digitalWrite(LED_BUILTIN, LOW);
-  delay(100);
-  digitalWrite(LED_BUILTIN, HIGH);
+  device.signalBootStart();
 
   debouncer.attach(port, INPUT_PULLUP);
   debouncer.interval(DEBOUNCE_INTERVAL);
@@ -42,7 +34,7 @@ void setup() {
   }
 
   Serial.println("Relay discovered!");
-  digitalWrite(LED_BUILTIN, LOW);
+  device.signalDeviceReady();
 }
 
 void loop() {
