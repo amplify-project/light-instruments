@@ -21,6 +21,7 @@ public:
     bool isRelayFound() const { return relayFound; }
 
     void signalBootStart();
+    void signalDeviceReady();
 
 private:
     static void onDataRecvStatic(const uint8_t * mac, const uint8_t *incomingData, int len);

@@ -43,6 +43,10 @@ void LightInstrument::signalBootStart() {
     digitalWrite(LED_BUILTIN, HIGH);
 }
 
+void LightInstrument::signalDeviceReady() {
+    digitalWrite(LED_BUILTIN, LOW);
+}
+
 void LightInstrument::update() {
     if (pingReceived) {
         sendPong();

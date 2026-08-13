@@ -55,7 +55,7 @@ void setup() {
   }
 
   Serial.println("Relay discovered!");
-  digitalWrite(LED_BUILTIN, LOW);
+  device.signalDeviceReady();
 }
 
 void loop() {
