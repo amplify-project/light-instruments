@@ -6,6 +6,7 @@
 
 LightInstrument device;
 int lastStates[] = { LOW, LOW, LOW, LOW, LOW, LOW, LOW, LOW };
+char currentPortName[3];
 
 int getNumChannels() {
   int channels = !digitalRead(DIP1) | !digitalRead(DIP2) << 1 | !digitalRead(DIP3) << 2;
@@ -69,9 +70,8 @@ void loop() {
     if (currentState != lastStates[i]) {
       Serial.printf("D%d => %d\n", i + 1, currentState);
 
-      char portName[3];
-      sprintf(portName, "D%d", i + 1);
-      device.sendEvent(portName, currentState);
+      sprintf(currentPortName, "D%d", i + 1);
+      device.sendEvent(currentPortName, currentState);
 
       lastStates[i] = currentState;
     }
