@@ -26,7 +26,7 @@ struct DeviceInfo {
 std::map<String, DeviceInfo> discoveredDevices;
 std::mutex devicesMtx;
 unsigned long lastDiscoveryTime = 0;
-const unsigned long DISCOVERY_INTERVAL = 10000; // 10 seconds
+const unsigned long DISCOVERY_INTERVAL = 5000;
 
 unsigned long lastPingTime = 0;
 const unsigned long PING_INTERVAL = 10000;
