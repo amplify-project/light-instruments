@@ -13,7 +13,7 @@ extern CommandManager commandManager;
 extern TaskHandle_t displayTaskHandle;
 extern String deviceName;
 extern String deviceType;
-extern int numLedsPerStrip;
+extern int numLedsPerStrip[4];
 extern int numStrips;
 
 #define numLedStrips ((int)ledStrips.size())
@@ -24,7 +24,7 @@ void triggerDisplay();
 void addLedStrip(uint8_t port, int numLeds, const char* name = nullptr);
 bool initPersistentConfig();
 void saveDeviceName(String name);
-void saveNumLeds(int numLeds);
+void saveNumLeds(int numLeds, int index = -1);
 void saveNumStrips(int numStrips);
 bool listenForSerialConfig();
 

@@ -10,7 +10,7 @@ CommandManager commandManager;
 TaskHandle_t displayTaskHandle = NULL;
 extern String deviceName;
 extern String deviceType;
-extern int numLedsPerStrip;
+extern int numLedsPerStrip[4];
 extern int numStrips;
 
 void showStrip(int index) {
@@ -58,11 +58,31 @@ bool initPersistentConfig() {
   Preferences prefs;
   prefs.begin("system", true);
   deviceName = prefs.getString("name", "");
-  numLedsPerStrip = prefs.getInt("numleds", 0);
+
+  int legacyNumLeds = prefs.getInt("numleds", 0);
+
+  for (int i = 0; i < 4; i++) {
+    String key = "numleds_" + String(i);
+    numLedsPerStrip[i] = prefs.getInt(key.c_str(), legacyNumLeds);
+  }
+
   numStrips = prefs.getInt("numstrips", 0);
   prefs.end();
 
-  return (deviceName != "" && numLedsPerStrip > 0 && numStrips > 0);
+  bool hasValidLeds = true;
+
+  if (numStrips > 0) {
+    for (int i = 0; i < numStrips; i++) {
+      if (numLedsPerStrip[i] <= 0) {
+        hasValidLeds = false;
+        break;
+      }
+    }
+  } else {
+    hasValidLeds = false;
+  }
+
+  return (deviceName != "" && hasValidLeds && numStrips > 0);
 }
 
 void saveDeviceName(String name) {
@@ -74,13 +94,25 @@ void saveDeviceName(String name) {
   deviceName = name;
 }
 
-void saveNumLeds(int numLeds) {
+void saveNumLeds(int numLeds, int index) {
   Preferences prefs;
   prefs.begin("system", false);
-  prefs.putInt("numleds", numLeds);
-  prefs.end();
 
-  numLedsPerStrip = numLeds;
+  if (index >= 0 && index < 4) {
+    String key = "numleds_" + String(index);
+    prefs.putInt(key.c_str(), numLeds);
+    numLedsPerStrip[index] = numLeds;
+  } else {
+    // Set all strips (index = -1)
+    prefs.putInt("numleds", numLeds);
+    for (int i = 0; i < 4; i++) {
+      String key = "numleds_" + String(i);
+      prefs.putInt(key.c_str(), numLeds);
+      numLedsPerStrip[i] = numLeds;
+    }
+  }
+
+  prefs.end();
 }
 
 void saveNumStrips(int numStripsValue) {
@@ -114,9 +146,17 @@ bool listenForSerialConfig() {
       Serial.println("--- Current Configuration ---");
       Serial.print("Device Name: ");
       Serial.println(deviceName == "" ? "[Not set]" : deviceName);
-      Serial.print("LEDs per strip: ");
-      Serial.println(numLedsPerStrip);
-      Serial.print("Number of strips: ");
+
+      Serial.println("LED counts:");
+
+      for (int i = 0; i < 4; i++) {
+        Serial.print("  Strip ");
+        Serial.print(i);
+        Serial.print(": ");
+        Serial.println(numLedsPerStrip[i]);
+      }
+
+      Serial.print("Number of active strips: ");
       Serial.println(numStrips);
       Serial.println("-----------------------------");
     } else if (input.startsWith("name=")) {
@@ -128,14 +168,34 @@ bool listenForSerialConfig() {
         Serial.print("Device name updated and saved to flash: ");
         Serial.println(deviceName);
       }
-    } else if (input.startsWith("numleds=")) {
-      int newNumLeds = input.substring(8).toInt();
+    } else if (input.startsWith("numleds")) {
+      int index = -1;
+      int valueStart = 8;
+
+      if (input.length() > 8 && input.charAt(7) >= '0' && input.charAt(7) <= '3' && input.charAt(8) == '=') {
+        index = input.charAt(7) - '0';
+        valueStart = 9;
+      } else if (input.startsWith("numleds=")) {
+        index = -1;
+        valueStart = 8;
+      } else {
+        return false;
+      }
+
+      int newNumLeds = input.substring(valueStart).toInt();
 
       if (newNumLeds > 0) {
-        saveNumLeds(newNumLeds);
+        saveNumLeds(newNumLeds, index);
 
-        Serial.print("Number of LEDs updated and saved to flash: ");
-        Serial.println(numLedsPerStrip);
+        Serial.print("Number of LEDs for ");
+        if (index >= 0) {
+          Serial.print("strip ");
+          Serial.print(index);
+        } else {
+          Serial.print("all strips");
+        }
+        Serial.print(" updated to ");
+        Serial.println(newNumLeds);
         Serial.println("Reboot required to apply changes.");
       }
     } else if (input.startsWith("numstrips=")) {
@@ -150,7 +210,20 @@ bool listenForSerialConfig() {
       }
     }
 
-    return (deviceName != "" && numLedsPerStrip > 0 && numStrips > 0);
+    bool hasValidLeds = true;
+
+    if (numStrips > 0) {
+      for (int i = 0; i < numStrips; i++) {
+        if (numLedsPerStrip[i] <= 0) {
+          hasValidLeds = false;
+          break;
+        }
+      }
+    } else {
+      hasValidLeds = false;
+    }
+
+    return (deviceName != "" && hasValidLeds && numStrips > 0);
   }
 
   return false;

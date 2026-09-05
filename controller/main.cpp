@@ -38,7 +38,7 @@ void setup() {
   Serial.begin(115200);
 
   if (!initPersistentConfig()) {
-    Serial.println("Persistent configuration missing. Waiting for name=..., numleds=... and numstrips=... commands via Serial.");
+    Serial.println("Persistent configuration missing. Waiting for name=..., numleds=... (or numledsN=...) and numstrips=... commands via Serial.");
 
     while (!listenForSerialConfig()) {
       vTaskDelay(pdMS_TO_TICKS(100));
@@ -47,8 +47,15 @@ void setup() {
 
   Serial.print("Device Name: ");
   Serial.println(deviceName);
-  Serial.print("LEDs per strip: ");
-  Serial.println(numLedsPerStrip);
+  Serial.println("LED counts:");
+
+  for (int i = 0; i < 4; i++) {
+    Serial.print("  Strip ");
+    Serial.print(i);
+    Serial.print(": ");
+    Serial.println(numLedsPerStrip[i]);
+  }
+
   Serial.print("Number of strips: ");
   Serial.println(numStrips);
 
@@ -56,10 +63,10 @@ void setup() {
   flashBuiltinLed();
 
   // Add LED strips here
-  if (numStrips >= 1) addLedStrip(LED1, numLedsPerStrip, "LED1");
-  if (numStrips >= 2) addLedStrip(LED2, numLedsPerStrip, "LED2");
-  if (numStrips >= 3) addLedStrip(LED3, numLedsPerStrip, "LED3");
-  if (numStrips >= 4) addLedStrip(LED4, numLedsPerStrip, "LED4");
+  if (numStrips >= 1) addLedStrip(LED1, numLedsPerStrip[0], "LED1");
+  if (numStrips >= 2) addLedStrip(LED2, numLedsPerStrip[1], "LED2");
+  if (numStrips >= 3) addLedStrip(LED3, numLedsPerStrip[2], "LED3");
+  if (numStrips >= 4) addLedStrip(LED4, numLedsPerStrip[3], "LED4");
 
   for (int i=0; i<numLedStrips; i++) {
     ledStrips[i].brightness = 50;

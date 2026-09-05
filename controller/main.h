@@ -18,7 +18,7 @@
 
 String deviceName = "";
 String deviceType = "actuator";
-int numLedsPerStrip = 0;
+int numLedsPerStrip[4];
 int numStrips = 0;
 
 struct Packet {
