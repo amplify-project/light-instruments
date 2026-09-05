@@ -6,7 +6,7 @@
 LightInstrument device;
 
 const int touchPins[] = {D1, D2, D3};
-const int sensitivityThreshold = 10; // Minimum change in 0-1023 scale to trigger a send
+const int touchThreshold = 512; // Threshold for digital touch (0-1023 scale)
 uint32_t touchMinima[] = {0, 0, 0};
 const uint32_t touchMaxDiff = 30000; // Expected max increase from baseline to reach 1023
 
@@ -78,15 +78,16 @@ void loop() {
 
     filteredValues[i] = (filterAlpha * mappedVal) + ((1.0f - filterAlpha) * filteredValues[i]);
     int finalVal = (int)filteredValues[i];
+    int currentState = (finalVal >= touchThreshold) ? 1 : 0;
 
-    if (abs(finalVal - lastSentValues[i]) >= sensitivityThreshold) {
+    if (currentState != lastSentValues[i]) {
       char port[4];
       snprintf(port, sizeof(port), "D%d", i + 1);
 
-      device.sendEvent(port, finalVal);
-      lastSentValues[i] = finalVal;
+      device.sendEvent(port, currentState);
+      lastSentValues[i] = currentState;
 
-      Serial.printf("Port %s | Raw: %u | Mapped: %d | Filtered: %d\n", port, rawVal, mappedVal, finalVal);
+      Serial.printf("Port %s | Digital: %d (Raw: %u, Mapped: %d, Filtered: %d)\n", port, currentState, rawVal, mappedVal, finalVal);
     }
   }
 
