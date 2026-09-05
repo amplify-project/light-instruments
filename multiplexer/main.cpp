@@ -7,6 +7,7 @@
 LightInstrument device;
 int lastStates[] = { LOW, LOW, LOW, LOW, LOW, LOW, LOW, LOW };
 char currentPortName[3];
+int numChannels;
 
 int getNumChannels() {
   int channels = !digitalRead(DIP1) | !digitalRead(DIP2) << 1 | !digitalRead(DIP3) << 2;
@@ -57,6 +58,8 @@ void setup() {
     delay(10);
   }
 
+  numChannels = getNumChannels();
+
   Serial.println("Relay discovered!");
   device.signalDeviceReady();
 }
@@ -64,7 +67,7 @@ void setup() {
 void loop() {
   device.update();
 
-  for (int i=0; i<getNumChannels(); i++) {
+  for (int i=0; i<numChannels; i++) {
     int currentState = readFromPort(i);
 
     if (currentState != lastStates[i]) {
