@@ -18,8 +18,6 @@
 #include "Accelerometer.h"
 #endif
 
-#include "Accelerometer.h"
-
 LightInstrument device;
 
 #ifdef USE_MMA8451
