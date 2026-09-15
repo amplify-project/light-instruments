@@ -9,6 +9,7 @@ LightInstrument device;
 
 const int buttonPins[] = {D1, D2, D3};
 const int numButtons = 3;
+char currentPortName[3];
 
 // State tracking
 int lastStates[] = {HIGH, HIGH, HIGH};
@@ -48,10 +49,12 @@ void loop() {
     int currentState = digitalRead(buttonPins[i]);
 
     if (currentState != lastStates[i]) {
+      sprintf(currentPortName, "D%d", i+1);
+
       if (currentState == LOW) {
-        device.sendEvent(String(i).c_str(), BTN_PRESSED);
+        device.sendEvent(currentPortName, BTN_RELEASED);
       } else {
-        device.sendEvent(String(i).c_str(), BTN_RELEASED);
+        device.sendEvent(currentPortName, BTN_PRESSED);
       }
 
       lastStates[i] = currentState;
