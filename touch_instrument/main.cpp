@@ -6,14 +6,14 @@
 LightInstrument device;
 
 const int touchPins[] = {D1, D2, D3};
-const int touchThreshold = 512; // Threshold for digital touch (0-1023 scale)
+const int touchThreshold = 256; // Threshold for digital touch (0-1023 scale)
 uint32_t touchMinima[] = {0, 0, 0};
 const uint32_t touchMaxDiff = 30000; // Expected max increase from baseline to reach 1023
 
 // State tracking
 int lastSentValues[] = {0, 0, 0};
 float filteredValues[] = {0, 0, 0};
-const float filterAlpha = 0.1f; // Smoothing factor (0.0 to 1.0), lower is smoother
+const float filterAlpha = 0.5f; // Smoothing factor (0.0 to 1.0), lower is smoother
 
 int processValue(int i, uint32_t val) {
   if (val < touchMinima[i]) {
