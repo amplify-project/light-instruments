@@ -15,6 +15,8 @@ int lastSentValues[] = {0, 0, 0};
 float filteredValues[] = {0, 0, 0};
 const float filterAlpha = 0.5f; // Smoothing factor (0.0 to 1.0), lower is smoother
 
+const String portMapping[] = {"D2", "D3", "D1"};
+
 int processValue(int i, uint32_t val) {
   if (val < touchMinima[i]) {
     return 0;
@@ -81,15 +83,12 @@ void loop() {
     int currentState = (finalVal >= touchThreshold) ? 1 : 0;
 
     if (currentState != lastSentValues[i]) {
-      char port[4];
-      snprintf(port, sizeof(port), "D%d", i + 1);
-
-      device.sendEvent(port, currentState);
+      device.sendEvent(portMapping[i].c_str(), currentState);
       lastSentValues[i] = currentState;
 
-      Serial.printf("Port %s | Digital: %d (Raw: %u, Mapped: %d, Filtered: %d)\n", port, currentState, rawVal, mappedVal, finalVal);
+      Serial.printf("Port %s | Digital: %d (Raw: %u, Mapped: %d, Filtered: %d)\n", portMapping[i], currentState, rawVal, mappedVal, finalVal);
     }
-  }
 
-  delay(10);
+    delay(10);
+  }
 }
