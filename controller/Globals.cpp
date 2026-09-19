@@ -149,7 +149,7 @@ bool listenForSerialConfig() {
 
       Serial.println("LED counts:");
 
-      for (int i = 0; i < 4; i++) {
+      for (int i = 0; i < numStrips; i++) {
         Serial.print("  Strip ");
         Serial.print(i);
         Serial.print(": ");
