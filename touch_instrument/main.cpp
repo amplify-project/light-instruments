@@ -13,7 +13,7 @@ const uint32_t touchMaxDiff = 30000; // Expected max increase from baseline to r
 // State tracking
 int lastSentValues[] = {0, 0, 0};
 float filteredValues[] = {0, 0, 0};
-const float filterAlpha = 0.5f; // Smoothing factor (0.0 to 1.0), lower is smoother
+const float filterAlpha = 0.7f; // Smoothing factor (0.0 to 1.0), lower is smoother
 
 const String portMapping[] = {"D2", "D3", "D1"};
 
