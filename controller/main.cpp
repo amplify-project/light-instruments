@@ -63,10 +63,10 @@ void setup() {
   flashBuiltinLed();
 
   // Add LED strips here
-  if (numStrips >= 1) addLedStrip(LED1, numLedsPerStrip[0], "LED1");
-  if (numStrips >= 2) addLedStrip(LED2, numLedsPerStrip[1], "LED2");
-  if (numStrips >= 3) addLedStrip(LED3, numLedsPerStrip[2], "LED3");
-  if (numStrips >= 4) addLedStrip(LED4, numLedsPerStrip[3], "LED4");
+  if (numStrips >= 1) addLedStrip(LED1, numLedsPerStrip[0], "led1");
+  if (numStrips >= 2) addLedStrip(LED2, numLedsPerStrip[1], "led2");
+  if (numStrips >= 3) addLedStrip(LED3, numLedsPerStrip[2], "led3");
+  if (numStrips >= 4) addLedStrip(LED4, numLedsPerStrip[3], "led4");
 
   for (int i=0; i<numLedStrips; i++) {
     ledStrips[i].brightness = 50;
