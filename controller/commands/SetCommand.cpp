@@ -7,6 +7,7 @@ void SetCommand::execute(const CommandPacket& packet) {
   const char* value = packet.value;
   if (!value) return;
 
+  bool changed = false;
   for (int i = 0; i < numLedStrips; i++) {
     if (isTargetPort(packet, ledStrips[i].name)) {
       int r, g, b, brightness;
@@ -21,8 +22,12 @@ void SetCommand::execute(const CommandPacket& packet) {
           fill_solid(ledStrips[i].leds, ledStrips[i].numLeds, newColor);
         }
 
-        showStrip(i);
+        changed = true;
       }
     }
+  }
+
+  if (changed) {
+    triggerDisplay();
   }
 }

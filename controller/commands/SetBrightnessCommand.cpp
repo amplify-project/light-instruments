@@ -8,11 +8,16 @@ void SetBrightnessCommand::execute(const CommandPacket& packet) {
   if (!value) return;
 
   int brightness = atoi(value);
+  bool changed = false;
 
   for (int i = 0; i < numLedStrips; i++) {
     if (isTargetPort(packet, ledStrips[i].name)) {
       ledStrips[i].brightness = brightness;
-      showStrip(i);
+      changed = true;
     }
+  }
+
+  if (changed) {
+    triggerDisplay();
   }
 }
