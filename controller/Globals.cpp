@@ -12,6 +12,7 @@ extern String deviceName;
 extern String deviceType;
 extern int numLedsPerStrip[4];
 extern int numStrips;
+extern int wifiChannel;
 
 void showStrip(int index) {
   if (index >= 0 && index < numLedStrips) {
@@ -67,6 +68,7 @@ bool initPersistentConfig() {
   }
 
   numStrips = prefs.getInt("numstrips", 0);
+  wifiChannel = prefs.getInt("channel", 0);
   prefs.end();
 
   bool hasValidLeds = true;
@@ -92,6 +94,15 @@ void saveDeviceName(String name) {
   prefs.end();
 
   deviceName = name;
+}
+
+void saveWifiChannel(int channel) {
+  Preferences prefs;
+  prefs.begin("system", false);
+  prefs.putInt("channel", channel);
+  prefs.end();
+
+  wifiChannel = channel;
 }
 
 void saveNumLeds(int numLeds, int index) {
@@ -146,6 +157,8 @@ bool listenForSerialConfig() {
       Serial.println("--- Current Configuration ---");
       Serial.print("Device Name: ");
       Serial.println(deviceName == "" ? "[Not set]" : deviceName);
+      Serial.print("WiFi Channel: ");
+      Serial.println(wifiChannel);
 
       Serial.println("LED counts:");
 
@@ -206,6 +219,16 @@ bool listenForSerialConfig() {
 
         Serial.print("Number of LED strips updated and saved to flash: ");
         Serial.println(numStrips);
+        Serial.println("Reboot required to apply changes.");
+      }
+    } else if (input.startsWith("channel=")) {
+      int newChannel = input.substring(8).toInt();
+
+      if (newChannel >= 0) {
+        saveWifiChannel(newChannel);
+
+        Serial.print("WiFi channel updated and saved to flash: ");
+        Serial.println(wifiChannel);
         Serial.println("Reboot required to apply changes.");
       }
     }

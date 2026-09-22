@@ -18,6 +18,7 @@
 
 String deviceName = "";
 String deviceType = "actuator";
+int wifiChannel = 0;
 int numLedsPerStrip[4];
 int numStrips = 0;
 
@@ -158,7 +159,7 @@ void setupWireless() {
   // Register Peer
   memset(&peerInfo, 0, sizeof(peerInfo));
   memcpy(peerInfo.peer_addr, relayAddress, 6);
-  peerInfo.channel = 0;
+  peerInfo.channel = wifiChannel;
   peerInfo.encrypt = false;
 
   if (esp_now_add_peer(&peerInfo) != ESP_OK) {

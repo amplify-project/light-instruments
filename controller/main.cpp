@@ -48,6 +48,8 @@ void setup() {
 
   Serial.print("Device Name: ");
   Serial.println(deviceName);
+  Serial.print("WiFi Channel: ");
+  Serial.println(wifiChannel);
   Serial.println("LED counts:");
 
   for (int i = 0; i < numStrips; i++) {
