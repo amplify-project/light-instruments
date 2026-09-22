@@ -36,6 +36,7 @@ void displayTask(void *pvParameters) {
 
 void setup() {
   Serial.begin(115200);
+  handleMemoryReset(D7);
 
   if (!initPersistentConfig()) {
     Serial.println("Persistent configuration missing. Waiting for name=..., numleds=... (or numledsN=...) and numstrips=... commands via Serial.");

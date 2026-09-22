@@ -228,3 +228,20 @@ bool listenForSerialConfig() {
 
   return false;
 }
+
+void handleMemoryReset(int resetPin) {
+  pinMode(resetPin, INPUT_PULLUP);
+  delay(10);
+
+  if (digitalRead(resetPin) == LOW) {
+    Serial.println("Performing memory reset...");
+
+    Preferences prefs;
+    prefs.begin("system", false);
+    prefs.clear();
+    prefs.end();
+
+    delay(1000);
+    ESP.restart();
+  }
+}

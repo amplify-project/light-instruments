@@ -27,5 +27,6 @@ void saveDeviceName(String name);
 void saveNumLeds(int numLeds, int index = -1);
 void saveNumStrips(int numStrips);
 bool listenForSerialConfig();
+void handleMemoryReset(int resetPin);
 
 #endif // GLOBALS_H
