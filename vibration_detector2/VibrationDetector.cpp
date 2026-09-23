@@ -6,7 +6,7 @@ void VibrationDetector::begin(uint8_t pin) {
 
   esp_adc_cal_characterize(
     ADC_UNIT_1,
-    ADC_ATTEN_DB_11,
+    ADC_ATTEN_DB_12,
     ADC_WIDTH_BIT_12,
     0,
     &adcChars

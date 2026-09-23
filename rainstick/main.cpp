@@ -16,7 +16,7 @@ void setup() {
     Serial.println("No persistent name found. Waiting for name=... command via Serial.");
 
     while (device.getDeviceName() == "") {
-      device.listenForDeviceName();
+      device.listenForDeviceConfig();
       delay(100);
     }
   }
