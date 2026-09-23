@@ -45,6 +45,17 @@ command `name=[DEVICE_NAME]`. The WiFi channel to use can be configured through
 the command `channel=[CHANNEL_NUM]`. In order to communicate, the receiver and
 the instruments need to be on the same WiFi channel.
 
+Upon boot, each instrument flashes the builtin LED on the microcontroller to
+signal boot start. Once the ports are set up and configured and the relay has
+been discovered, the builtin LED will turn on. This indicates that the device
+is ready and can communicate with the relay.
+
+## Common Library
+
+The folder `common/` contains a C++ library used by all light instruments. It
+provides methods for relay discovery, ping handling and data transmission to
+the receiver relay.
+
 ## LED Controllers
 
 The code for the LED strip controllers if found in `controller/`. Each
@@ -80,4 +91,3 @@ Lights Instruments) and the actuators (i.e. the LED strip controllers). It
 receives events from sensors and sends them to the Light Instrument Node
 Editor application through the serial connection for processing and also
 forwards light commands received through the serial to actuators.
-
