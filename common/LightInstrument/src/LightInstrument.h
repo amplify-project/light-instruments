@@ -15,8 +15,9 @@ public:
 
   void sendEvent(const char* port, int32_t value);
 
-  bool listenForDeviceName();
+  bool listenForDeviceConfig();
   String getDeviceName() const { return deviceName; }
+  int getWifiConfig() const { return wifiChannel; }
   const uint8_t* getRelayAddress() const { return relayAddress; }
   bool isRelayFound() const { return relayFound; }
 
@@ -30,13 +31,15 @@ private:
   void sendDiscoveryResponse();
   void sendPong();
 
-  bool initDeviceName();
+  bool initDeviceConfig();
   void saveDeviceName(String name);
+  void saveWifiChannel(int channel);
   void handleMemoryReset(int resetPin);
 
   String deviceName;
   const char* deviceType;
   uint8_t relayAddress[6];
+  int wifiChannel = 0;
   bool relayFound = false;
   bool pingReceived = false;
 

@@ -13,11 +13,13 @@ void LightInstrument::begin(int resetPin) {
     handleMemoryReset(resetPin);
   }
 
-  if (!initDeviceName()) {
-    Serial.println("Device name not set. Please set it using 'name=YOUR_NAME'");
+  if (!initDeviceConfig()) {
+    Serial.println("Device name not set. Please set it using 'name=YOUR_NAME'. WiFi channel can be set using 'channel=CHANNEL_NUM'");
   } else {
     Serial.print("Device name: ");
     Serial.println(deviceName);
+    Serial.print("WiFi Channel: ");
+    Serial.println(wifiChannel);
   }
 
   WiFi.mode(WIFI_STA);
@@ -73,7 +75,7 @@ void LightInstrument::onDataRecv(const uint8_t * mac, const uint8_t *incomingDat
       esp_now_peer_info_t peerInfo;
       memset(&peerInfo, 0, sizeof(peerInfo));
       memcpy(peerInfo.peer_addr, relayAddress, 6);
-      peerInfo.channel = 0;
+      peerInfo.channel = wifiChannel;
       peerInfo.encrypt = false;
 
       if (esp_now_add_peer(&peerInfo) != ESP_OK) {
@@ -179,10 +181,13 @@ void LightInstrument::handleMemoryReset(int resetPin) {
   }
 }
 
-bool LightInstrument::initDeviceName() {
+bool LightInstrument::initDeviceConfig() {
   Preferences prefs;
   prefs.begin("system", true);
+
   deviceName = prefs.getString("name", "");
+  wifiChannel = prefs.getInt("channel", 0);
+
   prefs.end();
 
   return (deviceName != "");
@@ -199,7 +204,18 @@ void LightInstrument::saveDeviceName(String name) {
   Serial.println(deviceName);
 }
 
-bool LightInstrument::listenForDeviceName() {
+void LightInstrument::saveWifiChannel(int channel) {
+  Preferences prefs;
+  prefs.begin("system", false);
+  prefs.putInt("channel", channel);
+  prefs.end();
+
+  wifiChannel = channel;
+  Serial.print("WiFi channel saved: ");
+  Serial.println(wifiChannel);
+}
+
+bool LightInstrument::listenForDeviceConfig() {
   if (Serial.available()) {
     String input = Serial.readStringUntil('\n');
     input.trim();
@@ -207,6 +223,11 @@ bool LightInstrument::listenForDeviceName() {
     if (input.startsWith("name=")) {
       String newName = input.substring(5);
       saveDeviceName(newName);
+
+      return true;
+    } else if (input.startsWith("channel=")) {
+      int newChannel = input.substring(8).toInt();
+      saveWifiChannel(newChannel);
 
       return true;
     }
