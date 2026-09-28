@@ -55,13 +55,13 @@ void LightInstrument::update() {
   }
 }
 
-void LightInstrument::onDataRecvStatic(const uint8_t * mac, const uint8_t *incomingData, int len) {
+void LightInstrument::onDataRecvStatic(const uint8_t* mac, const uint8_t* incomingData, int len) {
   if (instance) {
     instance->onDataRecv(mac, incomingData, len);
   }
 }
 
-void LightInstrument::onDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
+void LightInstrument::onDataRecv(const uint8_t* mac, const uint8_t* incomingData, int len) {
   if (len < (int)sizeof(ProtocolHeader)) {
     return;
   }
@@ -70,41 +70,39 @@ void LightInstrument::onDataRecv(const uint8_t * mac, const uint8_t *incomingDat
 
   if (header->type == MSG_DISCOVERY) {
     if (!relayFound) {
-      memcpy(relayAddress, mac, 6);
-
-      esp_now_peer_info_t peerInfo;
-      memset(&peerInfo, 0, sizeof(peerInfo));
-      memcpy(peerInfo.peer_addr, relayAddress, 6);
-      peerInfo.channel = wifiChannel;
-      peerInfo.encrypt = false;
-
-      if (esp_now_add_peer(&peerInfo) != ESP_OK) {
-        Serial.println("Failed to add peer");
+      if (!addPeer(mac)) {
         return;
       }
 
-      relayFound = true;
-      Serial.println("Relay found and peer added");
+      sendDiscoveryResponse();
     }
-
-    sendDiscoveryResponse();
   } else if (header->type == MSG_PING) {
     pingReceived = true;
 
     if (!relayFound) {
-      memcpy(relayAddress, mac, 6);
-      // We should probably add peer here too if not already added
-      esp_now_peer_info_t peerInfo;
-      memset(&peerInfo, 0, sizeof(peerInfo));
-      memcpy(peerInfo.peer_addr, relayAddress, 6);
-
-      peerInfo.channel = 0;
-      peerInfo.encrypt = false;
-
-      esp_now_add_peer(&peerInfo);
-      relayFound = true;
+      addPeer(mac);
     }
   }
+}
+
+bool LightInstrument::addPeer(const uint8_t* mac) {
+  memcpy(relayAddress, mac, 6);
+
+  esp_now_peer_info_t peerInfo;
+  memset(&peerInfo, 0, sizeof(peerInfo));
+  memcpy(peerInfo.peer_addr, relayAddress, 6);
+  peerInfo.channel = wifiChannel;
+  peerInfo.encrypt = false;
+
+  if (esp_now_add_peer(&peerInfo) != ESP_OK) {
+    Serial.println("Failed to add peer");
+    return false;
+  }
+
+  relayFound = true;
+  Serial.println("Relay found and peer added");
+
+  return true;
 }
 
 void LightInstrument::sendDiscoveryResponse() {

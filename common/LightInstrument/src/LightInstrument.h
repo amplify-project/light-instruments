@@ -25,9 +25,10 @@ public:
   void signalDeviceReady();
 
 private:
-  static void onDataRecvStatic(const uint8_t * mac, const uint8_t *incomingData, int len);
-  void onDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len);
+  static void onDataRecvStatic(const uint8_t* mac, const uint8_t* incomingData, int len);
+  void onDataRecv(const uint8_t* mac, const uint8_t* incomingData, int len);
 
+  bool addPeer(const uint8_t* mac);
   void sendDiscoveryResponse();
   void sendPong();
 
