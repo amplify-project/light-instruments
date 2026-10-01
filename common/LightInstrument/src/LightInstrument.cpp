@@ -228,6 +228,8 @@ bool LightInstrument::listenForDeviceConfig() {
       saveWifiChannel(newChannel);
 
       return true;
+    } else if (input.startsWith("getsettings")) {
+      Serial.printf("type=sensor,name=%s,channel=%d\n", deviceName, wifiChannel);
     }
   }
 
