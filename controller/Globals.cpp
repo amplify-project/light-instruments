@@ -116,6 +116,7 @@ void saveNumLeds(int numLeds, int index) {
   } else {
     // Set all strips (index = -1)
     prefs.putInt("numleds", numLeds);
+
     for (int i = 0; i < 4; i++) {
       String key = "numleds_" + String(i);
       prefs.putInt(key.c_str(), numLeds);
@@ -207,6 +208,7 @@ bool listenForSerialConfig() {
         } else {
           Serial.print("all strips");
         }
+
         Serial.print(" updated to ");
         Serial.println(newNumLeds);
         Serial.println("Reboot required to apply changes.");
@@ -231,6 +233,14 @@ bool listenForSerialConfig() {
         Serial.println(wifiChannel);
         Serial.println("Reboot required to apply changes.");
       }
+    } else if (input.startsWith("getsettings")) {
+      Serial.printf("type=actuator,name=%s,channel=%d,numstrips=%d", deviceName, wifiChannel, numStrips);
+
+      for (int i=0; i<numStrips; i++) {
+        Serial.printf(",numleds%d=%d", i+1, numLedsPerStrip[i]);
+      }
+
+      Serial.println();
     }
 
     bool hasValidLeds = true;
