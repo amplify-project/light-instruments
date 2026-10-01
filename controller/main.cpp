@@ -39,28 +39,10 @@ void setup() {
   handleMemoryReset(D7);
 
   if (!initPersistentConfig()) {
-    Serial.println("Persistent configuration missing. Waiting for name=..., numleds=... (or numledsN=...) and numstrips=... commands via Serial.");
-
     while (!listenForSerialConfig()) {
       vTaskDelay(pdMS_TO_TICKS(100));
     }
   }
-
-  Serial.print("Device Name: ");
-  Serial.println(deviceName);
-  Serial.print("WiFi Channel: ");
-  Serial.println(wifiChannel);
-  Serial.println("LED counts:");
-
-  for (int i = 0; i < numStrips; i++) {
-    Serial.print("  Strip ");
-    Serial.print(i);
-    Serial.print(": ");
-    Serial.println(numLedsPerStrip[i]);
-  }
-
-  Serial.print("Number of strips: ");
-  Serial.println(numStrips);
 
   pinMode(LED_BUILTIN, OUTPUT);
   flashBuiltinLed();
