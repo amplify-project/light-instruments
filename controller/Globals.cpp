@@ -178,16 +178,16 @@ bool listenForSerialConfig() {
 
       if (newName.length() > 0) {
         saveDeviceName(newName);
-
-        Serial.print("Device name updated and saved to flash: ");
-        Serial.println(deviceName);
+        Serial.println("OK");
+      } else {
+        Serial.println("ERR");
       }
     } else if (input.startsWith("numleds")) {
       int index = -1;
       int valueStart = 8;
 
       if (input.length() > 8 && input.charAt(7) >= '0' && input.charAt(7) <= '3' && input.charAt(8) == '=') {
-        index = input.charAt(7) - '0';
+        index = input.charAt(7) - '1';
         valueStart = 9;
       } else if (input.startsWith("numleds=")) {
         index = -1;
@@ -200,38 +200,27 @@ bool listenForSerialConfig() {
 
       if (newNumLeds > 0) {
         saveNumLeds(newNumLeds, index);
-
-        Serial.print("Number of LEDs for ");
-        if (index >= 0) {
-          Serial.print("strip ");
-          Serial.print(index);
-        } else {
-          Serial.print("all strips");
-        }
-
-        Serial.print(" updated to ");
-        Serial.println(newNumLeds);
-        Serial.println("Reboot required to apply changes.");
+        Serial.println("OK");
+      } else {
+        Serial.println("ERR");
       }
     } else if (input.startsWith("numstrips=")) {
       int newNumStrips = input.substring(10).toInt();
 
       if (newNumStrips > 0 && newNumStrips <= 4) {
         saveNumStrips(newNumStrips);
-
-        Serial.print("Number of LED strips updated and saved to flash: ");
-        Serial.println(numStrips);
-        Serial.println("Reboot required to apply changes.");
+        Serial.println("OK");
+      } else {
+        Serial.println("ERR");
       }
     } else if (input.startsWith("channel=")) {
       int newChannel = input.substring(8).toInt();
 
       if (newChannel >= 0) {
         saveWifiChannel(newChannel);
-
-        Serial.print("WiFi channel updated and saved to flash: ");
-        Serial.println(wifiChannel);
-        Serial.println("Reboot required to apply changes.");
+        Serial.println("OK");
+      } else {
+        Serial.println("ERR");
       }
     } else if (input.startsWith("getsettings")) {
       Serial.printf("type=actuator,name=%s,channel=%d,numstrips=%d", deviceName, wifiChannel, numStrips);

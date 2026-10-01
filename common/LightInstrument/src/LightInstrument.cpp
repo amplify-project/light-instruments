@@ -198,8 +198,6 @@ void LightInstrument::saveDeviceName(String name) {
   prefs.end();
 
   deviceName = name;
-  Serial.print("Device name saved: ");
-  Serial.println(deviceName);
 }
 
 void LightInstrument::saveWifiChannel(int channel) {
@@ -209,8 +207,6 @@ void LightInstrument::saveWifiChannel(int channel) {
   prefs.end();
 
   wifiChannel = channel;
-  Serial.print("WiFi channel saved: ");
-  Serial.println(wifiChannel);
 }
 
 bool LightInstrument::listenForDeviceConfig() {
@@ -220,14 +216,28 @@ bool LightInstrument::listenForDeviceConfig() {
 
     if (input.startsWith("name=")) {
       String newName = input.substring(5);
-      saveDeviceName(newName);
 
-      return true;
+      if (newName.length() > 0) {
+        saveDeviceName(newName);
+        Serial.println("OK");
+
+        return true;
+      }
+
+      Serial.println("ERR");
+      return false;
     } else if (input.startsWith("channel=")) {
       int newChannel = input.substring(8).toInt();
-      saveWifiChannel(newChannel);
 
-      return true;
+      if (newChannel >= 0) {
+        saveWifiChannel(newChannel);
+        Serial.println("OK");
+
+        return true;
+      }
+
+      Serial.println("ERR");
+      return false;
     } else if (input.startsWith("getsettings")) {
       Serial.printf("type=sensor,name=%s,channel=%d\n", deviceName, wifiChannel);
     }
