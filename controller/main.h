@@ -141,19 +141,31 @@ void flashBuiltinLed() {
   digitalWrite(LED_BUILTIN, HIGH);
 }
 
-void setupWireless() {
+void initWireless() {
   WiFi.mode(WIFI_STA);
+
   if (esp_now_init() != ESP_OK) {
     Serial.println("Error initializing ESP-NOW");
+
     return;
   }
 
   esp_now_register_recv_cb(onDataRecv);
 
-  Serial.println("Waiting for relay discovery...");
-  while (!relayFound) {
-    delay(10);
+  Serial.println("Wireless initialized, waiting for relay discovery...");
+}
+
+bool finishWirelessSetup() {
+  if (!relayFound) {
+    return false;
   }
+
+  static bool setupFinished = false;
+
+  if (setupFinished) {
+    return true;
+  }
+
   Serial.println("Relay discovered!");
 
   // Register Peer
@@ -164,10 +176,15 @@ void setupWireless() {
 
   if (esp_now_add_peer(&peerInfo) != ESP_OK) {
     Serial.println("Failed to add peer");
-    return;
+
+    return false;
   }
 
   sendDiscoveryResponse();
+  setupFinished = true;
+  digitalWrite(LED_BUILTIN, LOW);
+
+  return true;
 }
 
 #endif // MAIN_H

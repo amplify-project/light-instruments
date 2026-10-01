@@ -73,15 +73,23 @@ void setup() {
   commandManager.registerCommand("fire", std::unique_ptr<LightCommand>(new FireCommand()));
   commandManager.registerCommand("setLED", std::unique_ptr<LightCommand>(new SetLEDCommand()));
 
-  setupWireless();
-  digitalWrite(LED_BUILTIN, LOW);
-
-  xTaskCreatePinnedToCore(wirelessTask, "WirelessTask", 4096, NULL, 2, NULL, 0);
-  xTaskCreatePinnedToCore(animationTask, "AnimationTask", 4096, NULL, 1, NULL, 1);
-  xTaskCreatePinnedToCore(displayTask, "DisplayTask", 4096, NULL, 1, &displayTaskHandle, 1);
+  initWireless();
 }
 
 void loop() {
   listenForSerialConfig();
+
+  if (finishWirelessSetup()) {
+    static bool tasksStarted = false;
+
+    if (!tasksStarted) {
+      xTaskCreatePinnedToCore(wirelessTask, "WirelessTask", 4096, NULL, 2, NULL, 0);
+      xTaskCreatePinnedToCore(animationTask, "AnimationTask", 4096, NULL, 1, NULL, 1);
+      xTaskCreatePinnedToCore(displayTask, "DisplayTask", 4096, NULL, 1, &displayTaskHandle, 1);
+
+      tasksStarted = true;
+    }
+  }
+
   vTaskDelay(pdMS_TO_TICKS(100));
 }
