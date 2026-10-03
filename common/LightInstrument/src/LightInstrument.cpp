@@ -243,6 +243,10 @@ bool LightInstrument::listenForDeviceConfig() {
       return false;
     } else if (input.startsWith("getsettings")) {
       Serial.printf("type=sensor,name=%s,channel=%d\n", deviceName, wifiChannel);
+    } else if (input.startsWith("reboot")) {
+      Serial.println("OK");
+      delay(500);
+      ESP.restart();
     }
   }
 
