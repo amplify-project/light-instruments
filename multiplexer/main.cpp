@@ -8,6 +8,7 @@ LightInstrument device;
 int lastStates[] = { LOW, LOW, LOW, LOW, LOW, LOW, LOW, LOW };
 char currentPortName[3];
 int numChannels;
+bool deviceReady = false;
 
 int getNumChannels() {
   int channels = !digitalRead(DIP1) | !digitalRead(DIP2) << 1 | !digitalRead(DIP3) << 2;
@@ -32,8 +33,6 @@ void setup() {
   device.begin(DEVICE_RESET);
 
   if (device.getDeviceName() == "") {
-    Serial.println("No persistent name found. Waiting for name=... command via Serial.");
-
     while (device.getDeviceName() == "") {
       device.listenForDeviceConfig();
       delay(100);
@@ -52,20 +51,20 @@ void setup() {
 
   pinMode(DATA, INPUT_PULLDOWN);
 
-  Serial.println("Waiting for relay discovery...");
-
-  while (!device.isRelayFound()) {
-    delay(10);
-  }
-
   numChannels = getNumChannels();
-
-  Serial.println("Relay discovered!");
-  device.signalDeviceReady();
 }
 
 void loop() {
   device.update();
+
+  if (!deviceReady) {
+    if (!device.isRelayFound()) {
+      return;
+    }
+
+    device.signalDeviceReady();
+    deviceReady = true;
+  }
 
   for (int i=0; i<numChannels; i++) {
     int currentState = readFromPort(i);
