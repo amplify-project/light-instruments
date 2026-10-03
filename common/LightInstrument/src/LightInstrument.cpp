@@ -6,7 +6,7 @@ LightInstrument::LightInstrument(const char* deviceType) : deviceType(deviceType
   instance = this;
 }
 
-void LightInstrument::begin(int resetPin) {
+bool LightInstrument::begin(int resetPin) {
   Serial.begin(115200);
 
   if (resetPin != -1) {
@@ -27,10 +27,11 @@ void LightInstrument::begin(int resetPin) {
 
   if (esp_now_init() != ESP_OK) {
     Serial.println("Error initializing ESP-NOW");
-    return;
+    return false;
   }
 
   esp_now_register_recv_cb(onDataRecvStatic);
+  return true;
 }
 
 void LightInstrument::signalBootStart() {

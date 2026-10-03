@@ -10,7 +10,7 @@
 class LightInstrument {
 public:
   LightInstrument(const char* deviceType = "sensor");
-  void begin(int resetPin = -1);
+  bool begin(int resetPin = -1);
   void update();
 
   void sendEvent(const char* port, int32_t value);
