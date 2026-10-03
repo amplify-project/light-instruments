@@ -51,6 +51,8 @@ void LightInstrument::signalDeviceReady() {
 }
 
 void LightInstrument::update() {
+  listenForDeviceConfig();
+
   if (pingReceived) {
     sendPong();
   }
