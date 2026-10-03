@@ -35,8 +35,6 @@ void setup() {
   device.begin(DEVICE_RESET);
 
   if (device.getDeviceName() == "") {
-    Serial.println("No persistent name found. Waiting for name=... command via Serial.");
-
     while (device.getDeviceName() == "") {
       device.listenForDeviceConfig();
       delay(100);
@@ -44,8 +42,6 @@ void setup() {
   }
 
   device.signalBootStart();
-
-  Serial.println("Calibrating touch sensors (leave them untouched)...");
   delay(1000);
 
   for (int i = 0; i < 3; i++) {
@@ -58,16 +54,11 @@ void setup() {
 
     touchMinima[i] = sum / 10;
     filteredValues[i] = 0;
-    Serial.printf("Pin D%d baseline: %u\n", i + 1, touchMinima[i]);
   }
-
-  Serial.println("Waiting for relay discovery...");
 
   while (!device.isRelayFound()) {
     delay(10);
   }
-
-  Serial.println("Relay discovered!");
   device.signalDeviceReady();
 }
 
@@ -85,8 +76,6 @@ void loop() {
     if (currentState != lastSentValues[i]) {
       device.sendEvent(portMapping[i].c_str(), currentState);
       lastSentValues[i] = currentState;
-
-      Serial.printf("Port %s | Digital: %d (Raw: %u, Mapped: %d, Filtered: %d)\n", portMapping[i], currentState, rawVal, mappedVal, finalVal);
     }
 
     delay(10);
