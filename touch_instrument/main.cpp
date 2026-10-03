@@ -4,6 +4,7 @@
 #define DEVICE_RESET D7
 
 LightInstrument device;
+bool deviceReady = false;
 
 const int touchPins[] = {D1, D2, D3};
 const int touchThreshold = 256; // Threshold for digital touch (0-1023 scale)
@@ -55,15 +56,19 @@ void setup() {
     touchMinima[i] = sum / 10;
     filteredValues[i] = 0;
   }
-
-  while (!device.isRelayFound()) {
-    delay(10);
-  }
-  device.signalDeviceReady();
 }
 
 void loop() {
   device.update();
+
+  if (!deviceReady) {
+    if (!device.isRelayFound()) {
+      return;
+    }
+
+    device.signalDeviceReady();
+    deviceReady = true;
+  }
 
   for (int i = 0; i < 3; i++) {
     uint32_t rawVal = touchRead(touchPins[i]);
