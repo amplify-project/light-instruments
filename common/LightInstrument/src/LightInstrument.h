@@ -24,6 +24,11 @@ public:
   void signalBootStart();
   void signalDeviceReady();
 
+protected:
+  virtual bool initDeviceConfig();
+  virtual bool parseReceivedSetting(String input);
+  virtual void printCurrentSettings();
+
 private:
   static void onDataRecvStatic(const uint8_t* mac, const uint8_t* incomingData, int len);
   void onDataRecv(const uint8_t* mac, const uint8_t* incomingData, int len);
@@ -32,7 +37,6 @@ private:
   void sendDiscoveryResponse();
   void sendPong();
 
-  bool initDeviceConfig();
   void saveDeviceName(String name);
   void saveWifiChannel(int channel);
   void handleMemoryReset(int resetPin);

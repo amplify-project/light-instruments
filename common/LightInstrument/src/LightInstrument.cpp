@@ -217,38 +217,51 @@ bool LightInstrument::listenForDeviceConfig() {
     String input = Serial.readStringUntil('\n');
     input.trim();
 
-    if (input.startsWith("name=")) {
-      String newName = input.substring(5);
-
-      if (newName.length() > 0) {
-        saveDeviceName(newName);
-        Serial.println("OK");
-
-        return true;
-      }
-
-      Serial.println("ERR");
-      return false;
-    } else if (input.startsWith("channel=")) {
-      int newChannel = input.substring(8).toInt();
-
-      if (newChannel >= 0) {
-        saveWifiChannel(newChannel);
-        Serial.println("OK");
-
-        return true;
-      }
-
-      Serial.println("ERR");
-      return false;
-    } else if (input.startsWith("getsettings")) {
-      Serial.printf("type=sensor,name=%s,channel=%d\n", deviceName, wifiChannel);
-    } else if (input.startsWith("reboot")) {
-      Serial.println("OK");
-      delay(500);
-      ESP.restart();
-    }
+    return parseReceivedSetting(input);
   }
 
   return false;
+}
+
+bool LightInstrument::parseReceivedSetting(String input) {
+  if (input.startsWith("name=")) {
+    String newName = input.substring(5);
+
+    if (newName.length() > 0) {
+      saveDeviceName(newName);
+      Serial.println("OK");
+
+      return true;
+    }
+
+    Serial.println("ERR");
+    return false;
+  } else if (input.startsWith("channel=")) {
+    int newChannel = input.substring(8).toInt();
+
+    if (newChannel >= 0) {
+      saveWifiChannel(newChannel);
+      Serial.println("OK");
+
+      return true;
+    }
+
+    Serial.println("ERR");
+    return false;
+  } else if (input.startsWith("getsettings")) {
+    printCurrentSettings();
+    return true;
+  } else if (input.startsWith("reboot")) {
+    Serial.println("OK");
+    delay(500);
+    ESP.restart();
+
+    return true;
+  }
+
+  return false;
+}
+
+void LightInstrument::printCurrentSettings() {
+  Serial.printf("type=sensor,name=%s,channel=%d\n", deviceName, wifiChannel);
 }
