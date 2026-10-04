@@ -6,7 +6,7 @@ void VibrationDetector::begin(uint8_t pin) {
 
   esp_adc_cal_characterize(
     ADC_UNIT_1,
-    ADC_ATTEN_DB_12,
+    ADC_ATTEN_DB_11,
     ADC_WIDTH_BIT_12,
     0,
     &adcChars
@@ -44,4 +44,13 @@ float VibrationDetector::getEnvelope() const {
 
 float VibrationDetector::getNoiseFloor() const {
   return noiseFloor;
+}
+
+uint16_t VibrationDetector::getVibrationAmount() const {
+  float diff = envelope - noiseFloor;
+
+  if (diff < 0.0f) diff = 0.0f;
+  if (diff > 1023.0f) diff = 1023.0f;
+
+  return static_cast<uint16_t>(diff);
 }

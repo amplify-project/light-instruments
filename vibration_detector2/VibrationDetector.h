@@ -27,6 +27,7 @@ public:
 
   float getEnvelope() const;
   float getNoiseFloor() const;
+  uint16_t getVibrationAmount() const;
 };
 
 #endif
