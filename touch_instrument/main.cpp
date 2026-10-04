@@ -1,11 +1,12 @@
 #include <Arduino.h>
-#include "LightInstrument.h"
+#include "AnalogLightInstrument.h"
 
 #define DEVICE_RESET D7
 
-LightInstrument device;
+AnalogLightInstrument device;
 bool deviceReady = false;
 
+bool isAnalog = false;
 const int touchPins[] = {D1, D2, D3};
 const int touchThreshold = 256; // Threshold for digital touch (0-1023 scale)
 uint32_t touchMinima[] = {0, 0, 0};
@@ -42,6 +43,7 @@ void setup() {
     }
   }
 
+  isAnalog = device.getIsAnalog();
   device.signalBootStart();
   delay(1000);
 
@@ -76,11 +78,19 @@ void loop() {
 
     filteredValues[i] = (filterAlpha * mappedVal) + ((1.0f - filterAlpha) * filteredValues[i]);
     int finalVal = (int)filteredValues[i];
-    int currentState = (finalVal >= touchThreshold) ? 1 : 0;
 
-    if (currentState != lastSentValues[i]) {
-      device.sendEvent(portMapping[i].c_str(), currentState);
-      lastSentValues[i] = currentState;
+    if (isAnalog) {
+      if (finalVal != lastSentValues[i]) {
+        device.sendEvent(portMapping[i].c_str(), finalVal);
+        lastSentValues[i] = finalVal;
+      }
+    } else {
+      int currentState = (finalVal >= touchThreshold) ? 1 : 0;
+
+      if (currentState != lastSentValues[i]) {
+        device.sendEvent(portMapping[i].c_str(), currentState);
+        lastSentValues[i] = currentState;
+      }
     }
 
     delay(10);
