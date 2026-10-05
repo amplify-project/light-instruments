@@ -33,6 +33,34 @@ int processValue(int i, uint32_t val) {
   return map(adjustedVal, 0, touchMaxDiff, 0, 1023);
 }
 
+void processingTask(void* pvParameters) {
+  for (;;) {
+    for (int i = 0; i < 3; i++) {
+      uint32_t rawVal = touchRead(touchPins[i]);
+      int mappedVal = processValue(i, rawVal);
+
+      filteredValues[i] = (filterAlpha * mappedVal) + ((1.0f - filterAlpha) * filteredValues[i]);
+      int finalVal = (int)filteredValues[i];
+
+      if (isAnalog) {
+        if (finalVal != lastSentValues[i]) {
+          device.sendEvent(portMapping[i].c_str(), finalVal);
+          lastSentValues[i] = finalVal;
+        }
+      } else {
+        int currentState = (finalVal >= touchThreshold) ? 1 : 0;
+
+        if (currentState != lastSentValues[i]) {
+          device.sendEvent(portMapping[i].c_str(), currentState);
+          lastSentValues[i] = currentState;
+        }
+      }
+
+      vTaskDelay(pdMS_TO_TICKS(10));
+    }
+  }
+}
+
 void setup() {
   device.begin(DEVICE_RESET);
 
@@ -69,30 +97,9 @@ void loop() {
     }
 
     device.signalDeviceReady();
+    xTaskCreatePinnedToCore(processingTask, "ProcessingTask", 4096, NULL, 1, NULL, 1);
     deviceReady = true;
   }
 
-  for (int i = 0; i < 3; i++) {
-    uint32_t rawVal = touchRead(touchPins[i]);
-    int mappedVal = processValue(i, rawVal);
-
-    filteredValues[i] = (filterAlpha * mappedVal) + ((1.0f - filterAlpha) * filteredValues[i]);
-    int finalVal = (int)filteredValues[i];
-
-    if (isAnalog) {
-      if (finalVal != lastSentValues[i]) {
-        device.sendEvent(portMapping[i].c_str(), finalVal);
-        lastSentValues[i] = finalVal;
-      }
-    } else {
-      int currentState = (finalVal >= touchThreshold) ? 1 : 0;
-
-      if (currentState != lastSentValues[i]) {
-        device.sendEvent(portMapping[i].c_str(), currentState);
-        lastSentValues[i] = currentState;
-      }
-    }
-
-    delay(10);
-  }
+  vTaskDelay(pdMS_TO_TICKS(100));
 }
