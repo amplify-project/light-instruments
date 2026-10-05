@@ -20,6 +20,31 @@ bool isAnalog = false;
 uint32_t lastSampleMicros = 0;
 uint32_t lastTriggerMillis = 0;
 
+void processingTask(void* pvParameters) {
+  for (;;) {
+    uint32_t currentMicros = micros();
+
+    if (currentMicros - lastSampleMicros >= SAMPLE_INTERVAL_US * (isAnalog) ? 100 : 1) {
+      lastSampleMicros = currentMicros;
+
+      uint16_t rawValue = analogRead(DETECTOR_PIN);
+      float currentEnvelope = detector.update(rawValue);
+
+      if (!isAnalog) {
+        if (detector.isVibrating() && (millis() - lastTriggerMillis > DEBOUNCE_MS)) {
+          lastTriggerMillis = millis();
+          device.sendEvent("A1", 1);
+        }
+      } else {
+        lastTriggerMillis = millis();
+        device.sendEvent("A1", currentEnvelope);
+      }
+    }
+
+    vTaskDelay(pdMS_TO_TICKS(10));
+  }
+}
+
 void setup() {
   device.begin(DEVICE_RESET);
 
@@ -44,25 +69,9 @@ void loop() {
     }
 
     device.signalDeviceReady();
+    xTaskCreatePinnedToCore(processingTask, "ProcessingTask", 4096, NULL, 1, NULL, 1);
     deviceReady = true;
   }
 
-  uint32_t currentMicros = micros();
-
-  if (currentMicros - lastSampleMicros >= SAMPLE_INTERVAL_US * (isAnalog) ? 100 : 1) {
-    lastSampleMicros = currentMicros;
-
-    uint16_t rawValue = analogRead(DETECTOR_PIN);
-    float currentEnvelope = detector.update(rawValue);
-
-    if (!isAnalog) {
-      if (detector.isVibrating() && (millis() - lastTriggerMillis > DEBOUNCE_MS)) {
-        lastTriggerMillis = millis();
-        device.sendEvent("A1", currentEnvelope);
-      }
-    } else {
-      lastTriggerMillis = millis();
-      device.sendEvent("A1", currentEnvelope);
-    }
-  }
+  vTaskDelay(pdMS_TO_TICKS(100));
 }
