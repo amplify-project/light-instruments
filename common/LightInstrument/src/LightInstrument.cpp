@@ -13,20 +13,12 @@ bool LightInstrument::begin(int resetPin) {
     handleMemoryReset(resetPin);
   }
 
-  if (!initDeviceConfig()) {
-    Serial.println("Device name not set. Please set it using 'name=YOUR_NAME'. WiFi channel can be set using 'channel=CHANNEL_NUM'");
-  } else {
-    Serial.print("Device name: ");
-    Serial.println(deviceName);
-    Serial.print("WiFi Channel: ");
-    Serial.println(wifiChannel);
-  }
+  initDeviceConfig()
 
   WiFi.mode(WIFI_STA);
   WiFi.disconnect();
 
   if (esp_now_init() != ESP_OK) {
-    Serial.println("Error initializing ESP-NOW");
     return false;
   }
 
@@ -98,13 +90,10 @@ bool LightInstrument::addPeer(const uint8_t* mac) {
   peerInfo.encrypt = false;
 
   if (esp_now_add_peer(&peerInfo) != ESP_OK) {
-    Serial.println("Failed to add peer");
     return false;
   }
 
   relayFound = true;
-  Serial.println("Relay found and peer added");
-
   return true;
 }
 
@@ -120,11 +109,7 @@ void LightInstrument::sendDiscoveryResponse() {
   strncpy(packet.deviceName, deviceName.c_str(), sizeof(packet.deviceName) - 1);
   strncpy(packet.deviceType, deviceType, sizeof(packet.deviceType) - 1);
 
-  esp_err_t result = esp_now_send(relayAddress, (uint8_t *)&packet, sizeof(packet));
-
-  if (result != ESP_OK) {
-    Serial.println("Error sending the data");
-  }
+  esp_now_send(relayAddress, (uint8_t *)&packet, sizeof(packet));
 }
 
 void LightInstrument::sendPong() {
@@ -139,11 +124,7 @@ void LightInstrument::sendPong() {
   strncpy(packet.deviceType, deviceType, sizeof(packet.deviceType) - 1);
 
   pingReceived = false;
-  esp_err_t result = esp_now_send(relayAddress, (uint8_t *)&packet, sizeof(packet));
-
-  if (result != ESP_OK) {
-    Serial.println("Error sending the data");
-  }
+  esp_now_send(relayAddress, (uint8_t *)&packet, sizeof(packet));
 }
 
 void LightInstrument::sendEvent(const char* port, int32_t value) {
@@ -158,11 +139,7 @@ void LightInstrument::sendEvent(const char* port, int32_t value) {
   strncpy(packet.port, port, sizeof(packet.port) - 1);
   packet.value = value;
 
-  esp_err_t result = esp_now_send(relayAddress, (uint8_t *)&packet, sizeof(packet));
-
-  if (result != ESP_OK) {
-    Serial.println("Error sending the data");
-  }
+  esp_now_send(relayAddress, (uint8_t *)&packet, sizeof(packet));
 }
 
 void LightInstrument::handleMemoryReset(int resetPin) {
@@ -170,8 +147,6 @@ void LightInstrument::handleMemoryReset(int resetPin) {
   delay(10);
 
   if (digitalRead(resetPin) == LOW) {
-    Serial.println("Performing memory reset...");
-
     Preferences prefs;
     prefs.begin("system", false);
     prefs.clear();
