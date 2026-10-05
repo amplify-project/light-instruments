@@ -19,6 +19,7 @@
 #endif
 
 LightInstrument device;
+bool deviceReady = false;
 
 #ifdef USE_MMA8451
 Adafruit_MMA8451 mma = Adafruit_MMA8451();
@@ -30,12 +31,83 @@ const float threshold = 30.0; // Acceleration threshold for shake detection
 unsigned long lastEventTime = 0;
 const unsigned long cooldown = 100; // ms between events to avoid double triggering
 
+void processingTask(void* pvParameters) {
+  for (;;) {
+    #ifdef USE_MMA8451
+    sensors_event_t event;
+    mma.getEvent(&event);
+
+    float x = abs(event.acceleration.x);
+    float y = abs(event.acceleration.y);
+    float z = abs(event.acceleration.z);
+    #endif
+
+    #ifdef USE_MPU6050
+    AccelerationReading reading;
+    readAccelerationValues(&reading);
+
+    float x = reading.x;
+    float y = reading.y;
+    float z = reading.z;
+    #endif
+
+    bool triggered = false;
+    unsigned long now = millis();
+
+    if (now - lastEventTime > cooldown) {
+      if (x > threshold) {
+        if (x > lastX) {
+          peakSearchX = true;
+        } else if (peakSearchX) {
+          triggered = true;
+        }
+      } else {
+        peakSearchX = false;
+      }
+
+      if (y > threshold) {
+        if (y > lastY) {
+          peakSearchY = true;
+        } else if (peakSearchY) {
+          triggered = true;
+        }
+      } else {
+        peakSearchY = false;
+      }
+
+      if (z > threshold) {
+        if (z > lastZ) {
+          peakSearchZ = true;
+        } else if (peakSearchZ) {
+          triggered = true;
+        }
+      } else {
+        peakSearchZ = false;
+      }
+
+      if (triggered) {
+        device.sendEvent("accel", 1);
+
+        lastEventTime = now;
+        peakSearchX = false;
+        peakSearchY = false;
+        peakSearchZ = false;
+      }
+    }
+
+    lastX = x;
+    lastY = y;
+    lastZ = z;
+
+    vTaskDelay(pdMS_TO_TICKS(1));
+  }
+}
+
 void setup() {
   device.begin(DEVICE_RESET);
+  delay(2000);
 
   if (device.getDeviceName() == "") {
-    Serial.println("No persistent name found. Waiting for name=... command via Serial.");
-
     while (device.getDeviceName() == "") {
       device.listenForDeviceConfig();
       delay(100);
@@ -46,7 +118,6 @@ void setup() {
 
   #ifdef USE_MMA8451
   if (!mma.begin()) {
-    Serial.println("Couldnt start MMA8451");
     while (1);
   }
   mma.setRange(MMA8451_RANGE_4_G);
@@ -55,86 +126,20 @@ void setup() {
   #ifdef USE_MPU6050
   initAccelerometer();
   #endif
-
-  Serial.println("Waiting for relay discovery...");
-
-  while (!device.isRelayFound()) {
-    delay(10);
-  }
-
-  Serial.println("Relay discovered!");
-  device.signalDeviceReady();
 }
 
 void loop() {
   device.update();
 
-  #ifdef USE_MMA8451
-  sensors_event_t event;
-  mma.getEvent(&event);
-
-  float x = abs(event.acceleration.x);
-  float y = abs(event.acceleration.y);
-  float z = abs(event.acceleration.z);
-  #endif
-
-  #ifdef USE_MPU6050
-  AccelerationReading reading;
-  readAccelerationValues(&reading);
-
-  float x = reading.x;
-  float y = reading.y;
-  float z = reading.z;
-  #endif
-
-  bool triggered = false;
-  unsigned long now = millis();
-
-  if (now - lastEventTime > cooldown) {
-    if (x > threshold) {
-      if (x > lastX) {
-        peakSearchX = true;
-      } else if (peakSearchX) {
-        triggered = true;
-      }
-    } else {
-      peakSearchX = false;
+  if (!deviceReady) {
+    if (!device.isRelayFound()) {
+      return;
     }
 
-    if (y > threshold) {
-      if (y > lastY) {
-        peakSearchY = true;
-      } else if (peakSearchY) {
-        triggered = true;
-      }
-    } else {
-      peakSearchY = false;
-    }
-
-    if (z > threshold) {
-      if (z > lastZ) {
-        peakSearchZ = true;
-      } else if (peakSearchZ) {
-        triggered = true;
-      }
-    } else {
-      peakSearchZ = false;
-    }
-
-    if (triggered) {
-      device.sendEvent("accel", 1);
-      Serial.println("Event sent");
-
-      lastEventTime = now;
-      peakSearchX = false;
-      peakSearchY = false;
-      peakSearchZ = false;
-    }
+    device.signalDeviceReady();
+    xTaskCreatePinnedToCore(processingTask, "ProcessingTask", 4096, NULL, 1, NULL, 1);
+    deviceReady = true;
   }
 
-  lastX = x;
-  lastY = y;
-  lastZ = z;
-
-  delay(1);
+  vTaskDelay(pdMS_TO_TICKS(100));
 }
