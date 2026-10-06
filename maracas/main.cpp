@@ -6,16 +6,27 @@
 #define DEBOUNCE_INTERVAL 10
 
 LightInstrument device;
+bool deviceReady = false;
 
 const int port = D3;
 Bounce debouncer = Bounce();
+
+void processingTask(void* pvParameters) {
+  for (;;) {
+    debouncer.update();
+
+    if (debouncer.fell()) {
+      device.sendEvent("D3", 1);
+    }
+
+    vTaskDelay(pdMS_TO_TICKS(10));
+  }
+}
 
 void setup() {
   device.begin(DEVICE_RESET);
 
   if (device.getDeviceName() == "") {
-    Serial.println("No persistent name found. Waiting for name=... command via Serial.");
-
     while (device.getDeviceName() == "") {
       device.listenForDeviceConfig();
       delay(100);
@@ -26,23 +37,20 @@ void setup() {
 
   debouncer.attach(port, INPUT_PULLUP);
   debouncer.interval(DEBOUNCE_INTERVAL);
-
-  Serial.println("Waiting for relay discovery...");
-
-  while (!device.isRelayFound()) {
-    delay(10);
-  }
-
-  Serial.println("Relay discovered!");
-  device.signalDeviceReady();
 }
 
 void loop() {
   device.update();
-  debouncer.update();
 
-  if (debouncer.fell()) {
-    device.sendEvent("D3", 1);
-    Serial.println("Sent event");
+  if (!deviceReady) {
+    if (!device.isRelayFound()) {
+      return;
+    }
+
+    device.signalDeviceReady();
+    xTaskCreatePinnedToCore(processingTask, "ProcessingTask", 4096, NULL, 1, NULL, 1);
+    deviceReady = true;
   }
+
+  vTaskDelay(pdMS_TO_TICKS(100));
 }

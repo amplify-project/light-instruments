@@ -13,7 +13,7 @@ bool LightInstrument::begin(int resetPin) {
     handleMemoryReset(resetPin);
   }
 
-  initDeviceConfig()
+  initDeviceConfig();
 
   WiFi.mode(WIFI_STA);
   WiFi.disconnect();
