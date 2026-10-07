@@ -5,6 +5,7 @@
 #include <mutex>
 #include <map>
 #include <array>
+#include <Preferences.h>
 
 #include "Protocol.h"
 
@@ -17,6 +18,7 @@ struct Packet {
 std::deque<Packet> packetQueue;
 std::mutex queueMtx;
 uint8_t broadcastAddress[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+int wifiChannel = 0;
 
 struct DeviceInfo {
   std::array<uint8_t, 6> mac;
@@ -304,6 +306,43 @@ void sendDeviceCommand(const char* device, const char* port, const char* command
   }
 }
 
+int getWifiChannel() {
+  Preferences prefs;
+  prefs.begin("system", true);
+  int channel = prefs.getInt("channel", 0);
+  prefs.end();
+
+  return channel;
+}
+
+void saveWifiChannel(int channel) {
+  Preferences prefs;
+  prefs.begin("system", false);
+  prefs.putInt("channel", channel);
+  prefs.end();
+
+  wifiChannel = channel;
+}
+
+void handleConfigCommand(char* line) {
+  if (strncmp(line, "getsettings", 11) == 0) {
+    Serial.printf("type=receiver,channel=%d\n", wifiChannel);
+  } else if (strncmp(line, "reboot", 6) == 0) {
+    flashBuiltinLed();
+    ESP.restart();
+  } else if (strncmp(line, "channel=", 8) == 0) {
+    char* channelNum = line + 8;
+    int channel = atoi(channelNum);
+
+    if (channel >= 0 && channel <= 14) {
+      saveWifiChannel(channel);
+      Serial.println("OK");
+    } else {
+      Serial.println("ERR");
+    }
+  }
+}
+
 /**
  * @brief Handles a single command line received via Serial.
  *
@@ -316,7 +355,12 @@ void handleSerialCommand(char* line) {
   char* device = line;
   char* comma1 = strchr(device, ',');
 
-  if (!comma1) return;
+  // If the input does not contain a comma, we try to parse it as config command
+  if (!comma1) {
+    handleConfigCommand(line);
+    return;
+  }
+
   *comma1 = '\0';
   char* port = comma1 + 1;
 
@@ -392,7 +436,8 @@ void setup() {
     peerInfo.peer_addr[i] = 0xFF;
   }
 
-  peerInfo.channel = 0;
+  wifiChannel = getWifiChannel();
+  peerInfo.channel = wifiChannel;
   peerInfo.encrypt = false;
 
   if (esp_now_add_peer(&peerInfo) != ESP_OK) {
@@ -411,8 +456,6 @@ void setup() {
 
   // Turn on builtin LED to indicate successful initialization
   digitalWrite(LED_BUILTIN, LOW);
-
-  Serial.printf("READY\n");
 }
 
 void loop() {
