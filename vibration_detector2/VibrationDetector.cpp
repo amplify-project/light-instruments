@@ -16,41 +16,43 @@ void VibrationDetector::begin(uint8_t pin) {
 float VibrationDetector::update(uint16_t rawAdc) {
   uint32_t voltageMv = esp_adc_cal_raw_to_voltage(rawAdc, &adcChars);
   float sample = static_cast<float>(voltageMv);
+  uint32_t now = millis();
 
-  // Dynamic baseline tracking (High-pass offset cancellation)
-  rawDC = (alpha * sample) + ((1.0f - alpha) * rawDC);
+  // Decay the tracked peak for analog reporting
+  currentPeak *= peakDecayRate;
 
-  // Rectification (Extract AC variance magnitude)
-  float acSignal = fabsf(sample - rawDC);
+  // Check for new spike if we are not in lockout
+  if (now >= lockoutUntil) {
+    if (sample > spikeThreshold) {
+      detectedInWindow = true;
+      lockoutUntil = now + lockoutDuration;
 
-  // Low-pass envelope creation
-  envelope = (beta * acSignal) + ((1.0f - beta) * envelope);
-
-  // Adapt ambient noise floor down during quiet periods
-  if (envelope < noiseFloor) {
-    noiseFloor = (0.005f * envelope) + (0.995f * noiseFloor);
+      // Update peak if this spike is higher than current decaying peak
+      if (sample > currentPeak) {
+        currentPeak = sample;
+      }
+    }
   }
 
-  return envelope;
+  return currentPeak;
 }
 
-bool VibrationDetector::isVibrating() const {
-  return envelope > (noiseFloor + sensitivityMargin);
+bool VibrationDetector::isVibrating() {
+  bool detected = detectedInWindow;
+  detectedInWindow = false; // Reset after reading
+  return detected;
 }
 
-float VibrationDetector::getEnvelope() const {
-  return envelope;
-}
-
-float VibrationDetector::getNoiseFloor() const {
-  return noiseFloor;
+float VibrationDetector::getPeak() const {
+  return currentPeak;
 }
 
 uint16_t VibrationDetector::getVibrationAmount() const {
-  float diff = envelope - noiseFloor;
+  // Map 0-2500mV to 0-1023
+  float val = (currentPeak / 2500.0f) * 1023.0f;
 
-  if (diff < 0.0f) diff = 0.0f;
-  if (diff > 1023.0f) diff = 1023.0f;
+  if (val < 0.0f) val = 0.0f;
+  if (val > 1023.0f) val = 1023.0f;
 
-  return static_cast<uint16_t>(diff);
+  return static_cast<uint16_t>(val);
 }

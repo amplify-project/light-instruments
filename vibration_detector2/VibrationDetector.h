@@ -6,16 +6,16 @@
 
 class VibrationDetector {
 private:
-  float rawDC = 2048.0f;
-  float envelope = 0.0f;
-  float noiseFloor = 50.0f;
-
-  // Filter coefficients
-  const float alpha = 0.02f;
-  const float beta = 0.25f;
-  const float sensitivityMargin = 150.0f;
-
   esp_adc_cal_characteristics_t adcChars;
+
+  float currentPeak = 0.0f;
+  uint32_t lockoutUntil = 0;
+  bool detectedInWindow = false;
+
+  // Configuration
+  const float spikeThreshold = 300.0f;    // mV to trigger detection
+  const uint32_t lockoutDuration = 20;   // ms to ignore bounces
+  const float peakDecayRate = 0.95f;      // Decay for analog output
 
 public:
   VibrationDetector() {}
@@ -23,10 +23,9 @@ public:
   void begin(uint8_t pin);
   float update(uint16_t rawAdc);
 
-  bool isVibrating() const;
+  bool isVibrating();
 
-  float getEnvelope() const;
-  float getNoiseFloor() const;
+  float getPeak() const;
   uint16_t getVibrationAmount() const;
 };
 
