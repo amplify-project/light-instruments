@@ -24,11 +24,11 @@ void processingTask(void* pvParameters) {
   for (;;) {
     uint32_t currentMicros = micros();
 
-    if (currentMicros - lastSampleMicros >= SAMPLE_INTERVAL_US * (isAnalog) ? 100 : 1) {
+    if (currentMicros - lastSampleMicros >= SAMPLE_INTERVAL_US) {
       lastSampleMicros = currentMicros;
 
       uint16_t rawValue = analogRead(DETECTOR_PIN);
-      float currentEnvelope = detector.update(rawValue);
+      float currentPeak = detector.update(rawValue);
 
       if (!isAnalog) {
         if (detector.isVibrating() && (millis() - lastTriggerMillis > DEBOUNCE_MS)) {
@@ -37,11 +37,11 @@ void processingTask(void* pvParameters) {
         }
       } else {
         lastTriggerMillis = millis();
-        device.sendEvent("A1", currentEnvelope);
+        device.sendEvent("A1", currentPeak);
       }
     }
 
-    vTaskDelay(pdMS_TO_TICKS(10));
+    vTaskDelay(pdMS_TO_TICKS(1));
   }
 }
 
@@ -73,5 +73,5 @@ void loop() {
     deviceReady = true;
   }
 
-  vTaskDelay(pdMS_TO_TICKS(100));
+  vTaskDelay(pdMS_TO_TICKS(200));
 }
